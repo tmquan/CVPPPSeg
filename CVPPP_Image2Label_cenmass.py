@@ -292,7 +292,7 @@ class CVPPPDataFlow(ImageDataFlow):
                 field[labels==label]  = 1.0 # Mask the current label
                 cen = ndimage.measurements.center_of_mass(field)
                 newfield = np.zeros_like(labels)
-                newfield[cen] = 1.0
+                newfield[cen[0], cen[1]] = 1.0
                 newfield = ndimage.distance_transform_edt(newfield)
 
                 # Normalize:
