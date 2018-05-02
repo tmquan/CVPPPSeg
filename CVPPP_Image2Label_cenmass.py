@@ -296,8 +296,8 @@ class CVPPPDataFlow(ImageDataFlow):
                 newfield = np.zeros_like(labels)
                 newfield[np.int32(cen[0]), np.int32(cen[1]), np.int32(cen[2])] = 1.0
                 newfield = ndimage.distance_transform_edt(newfield)
-                print newfield.min()
-                print newfield.max()
+                # print newfield.min()
+                # print newfield.max()
                 # Normalize:
                 newfield[field==0] = 1e3 
                 newfield -= newfield.min()
