@@ -49,29 +49,39 @@ DIMX = 512
 
 
 class Model(ModelDesc):
-    #FusionNet
+    # #FusionNet
+    # @auto_reuse_variable_scope
+    # def generator(self, img, last_dim=1, nl=tf.nn.tanh, nb_filters=32):
+    #     assert img is not None
+    #     return arch_generator(img, last_dim=last_dim, nl=nl, nb_filters=nb_filters)
+    @staticmethod
+    def build_res_block(x, name, chan, first=False):
+        with tf.variable_scope(name):
+            input = x
+            return (LinearWrap(x)
+                    .tf.pad([[0, 0], [0, 0], [1, 1], [1, 1]], mode='SYMMETRIC')
+                    .Conv2D('conv0', chan, 3, padding='VALID')
+                    .tf.pad([[0, 0], [0, 0], [1, 1], [1, 1]], mode='SYMMETRIC')
+                    .Conv2D('conv1', chan, 3, padding='VALID', activation=tf.identity)
+                    .InstanceNorm('inorm')()) + input
+
     @auto_reuse_variable_scope
-    def generator(self, img, last_dim=1, nl=tf.nn.tanh, nb_filters=32):
+    def generator(self, img):
         assert img is not None
-        return arch_generator(img, last_dim=last_dim, nl=nl, nb_filters=nb_filters)
-        # from enet import *
-        # num_initial_blocks = 1
-        # skip_connections = False
-        # stage_two_repeat = 2
-        # slim = tf.contrib.slim
-
-        # with slim.arg_scope(ENet_arg_scope()):
-        #     sfm, last_prelu = ENet(img,
-        #                  num_classes=last_dim,
-        #                  batch_size=DIMZ,
-        #                  is_training=True,
-        #                  reuse=None,
-        #                  num_initial_blocks=num_initial_blocks,
-        #                  stage_two_repeat=stage_two_repeat,
-        #                  skip_connections=skip_connections)
-        # return sfm, last_prelu
-        # return arch_fusionnet(img)
-
+        with argscope([Conv2D, Conv2DTranspose], activation=INReLU):
+            l = (LinearWrap(img)
+                 .tf.pad([[0, 0], [0, 0], [3, 3], [3, 3]], mode='SYMMETRIC')
+                 .Conv2D('conv0', NF, 7, padding='VALID')
+                 .Conv2D('conv1', NF * 2, 3, strides=2)
+                 .Conv2D('conv2', NF * 4, 3, strides=2)())
+            for k in range(9):
+                l = Model.build_res_block(l, 'res{}'.format(k), NF * 4, first=(k == 0))
+            l = (LinearWrap(l)
+                 .Conv2DTranspose('deconv0', NF * 2, 3, strides=2)
+                 .Conv2DTranspose('deconv1', NF * 1, 3, strides=2)
+                 .tf.pad([[0, 0], [0, 0], [3, 3], [3, 3]], mode='SYMMETRIC')
+                 .Conv2D('convlast', 3, 7, padding='VALID', activation=tf.tanh, use_bias=True)())
+        return l
     @auto_reuse_variable_scope
     def discriminator(self, img):
         assert img is not None
