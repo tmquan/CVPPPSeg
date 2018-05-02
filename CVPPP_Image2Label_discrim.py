@@ -111,9 +111,9 @@ class Model(ModelDesc):
                                                  # nb_filters=32
                                                  )
                         # pil = tf_2imag(pil, maxVal=255.0)
-                        avg, var = tf.nn.moments(pil, axes=[1,2], keep_dims=True)
-                        pil -= avg
-                        pil /= (var+1e-6)
+                        # avg, var = tf.nn.moments(pil, axes=[1,2], keep_dims=True)
+                        # pil -= avg
+                        # pil /= (var+1e-6)
             losses = []         
             
             # with tf.name_scope('loss_mae'):
