@@ -108,7 +108,7 @@ class Model(ModelDesc):
                 add_moving_summary(mae_il)
 
                 mae_if = tf.reduce_mean(tf.abs( pl - tf.cast(tf.cast(pl, tf.int32), tf.float32) -
-                                                pil - tf.cast(tf.cast(pl, tf.int32), tf.float32), 
+                                                pil - tf.cast(tf.cast(pl, tf.int32), tf.float32)), 
                                              
                                         name='mae_if')
                 losses.append(1e0*mae_if)
