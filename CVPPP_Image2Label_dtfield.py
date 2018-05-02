@@ -284,19 +284,20 @@ class CVPPPDataFlow(ImageDataFlow):
         fields = np.zeros_like(labels)
         lst_labels, cnt_labels = np.unique(labels, return_counts=True)
         for label in lst_labels:
-            field = np.zeros_like(labels)
-            
-            field[labels==label]  = 1.0 # Mask the current label
+            if label != 0:
+                field = np.zeros_like(labels)
+                
+                field[labels==label]  = 1.0 # Mask the current label
 
-            #Perform distance transform
-            from scipy import ndimage
-            field = ndimage.distance_transform_edt(field)
+                #Perform distance transform
+                from scipy import ndimage
+                field = ndimage.distance_transform_edt(field)
 
-            # Normalize:
-            field = field/field.max() / 2.0 # From 0-1 to 0-0.5
+                # Normalize:
+                field = field/field.max() / 2.0 # From 0-1 to 0-0.5
 
-            # Append to the final result
-            fields = fields + field
+                # Append to the final result
+                fields = fields + field
 
         return fields
 
