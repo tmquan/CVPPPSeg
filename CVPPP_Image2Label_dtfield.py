@@ -102,12 +102,17 @@ class Model(ModelDesc):
             losses = []         
             
             with tf.name_scope('loss_mae'):
-                mae_il = tf.reduce_mean(tf.abs(pl - 
-                                             #tf.cast(tf.cast(pil, tf.int32), tf.float32)), 
-                                             pil),
+                mae_il = tf.reduce_mean(tf.abs(pl -  pil),
                                         name='mae_il')
                 losses.append(1e0*mae_il)
                 add_moving_summary(mae_il)
+
+                mae_if = tf.reduce_mean(tf.abs( pl - tf.cast(tf.cast(pl, tf.int32), tf.float32) -
+                                                pil - tf.cast(tf.cast(pl, tf.int32), tf.float32), 
+                                             
+                                        name='mae_if')
+                losses.append(1e0*mae_if)
+                add_moving_summary(mae_if)
 
          
             # Collect the result
