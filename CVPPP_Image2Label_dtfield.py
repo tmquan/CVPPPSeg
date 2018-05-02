@@ -287,19 +287,27 @@ class CVPPPDataFlow(ImageDataFlow):
         lst_labels, cnt_labels = np.unique(labels, return_counts=True)
         for label in lst_labels:
             if label != 0:
-                field = np.zeros_like(labels)
-                
-                field[labels==label]  = 1.0 # Mask the current label
-
-                #Perform distance transform
+                # Find center of mass
                 from scipy import ndimage
-                field = ndimage.distance_transform_edt(field)
-
+                field = np.zeros_like(labels)
+                field[labels==label]  = 1.0 # Mask the current label
+                cen = ndimage.measurements.center_of_mass(field)
+                # print(cen)
+                newfield = -1.0 * np.ones_like(labels)
+                newfield[labels==label] = 1.0
+                newfield = ndimage.distance_transform_edt(newfield)
+                # print newfield.min()
+                # print newfield.max()
                 # Normalize:
-                field = field/field.max() / 2.0 # From 0-1 to 0-0.5
+                newfield[field==0] = 1e3 
+                newfield -= newfield.min()
+                newfield[field==0] = 0
+                
+                newfield /= ((newfield.max() + 1e-6) * 2.0) # From 0-1 to 0-0.5
 
+               
                 # Append to the final result
-                fields = fields + field
+                fields = fields + newfield
 
         return fields
 
