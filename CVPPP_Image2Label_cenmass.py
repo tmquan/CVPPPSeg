@@ -154,7 +154,7 @@ class VisualizeRunner(Callback):
         for lst in self.dset.get_data():
             #image, level = lst
             vis = self.pred(lst)
-            vis = np.array(vis).astype(np.uint8)
+            vis = np.squeeze(np.array(vis).astype(np.uint8))
             print(vis.shape)
             self.trainer.monitors.put_image('vis', vis)
 ###############################################################################
