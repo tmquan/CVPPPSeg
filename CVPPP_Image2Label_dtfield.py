@@ -49,7 +49,7 @@ DIMX = 512
 
 
 class Model(ModelDesc):
-    # #FusionNet
+     # #FusionNet
     # @auto_reuse_variable_scope
     # def generator(self, img, last_dim=1, nl=tf.nn.tanh, nb_filters=32):
     #     assert img is not None
@@ -59,9 +59,9 @@ class Model(ModelDesc):
         with tf.variable_scope(name):
             input = x
             return (LinearWrap(x)
-                    .tf.pad([[0, 0], [0, 0], [1, 1], [1, 1]], mode='SYMMETRIC')
+                    .tf.pad([[0, 0], [1, 1], [1, 1], [0, 0]], mode='SYMMETRIC')
                     .Conv2D('conv0', chan, 3, padding='VALID')
-                    .tf.pad([[0, 0], [0, 0], [1, 1], [1, 1]], mode='SYMMETRIC')
+                    .tf.pad([[0, 0], [1, 1], [1, 1], [0, 0]], mode='SYMMETRIC')
                     .Conv2D('conv1', chan, 3, padding='VALID', activation=tf.identity)
                     .InstanceNorm('inorm')()) + input
 
@@ -70,7 +70,7 @@ class Model(ModelDesc):
         assert img is not None
         with argscope([Conv2D, Conv2DTranspose], activation=INReLU):
             l = (LinearWrap(img)
-                 .tf.pad([[0, 0], [0, 0], [3, 3], [3, 3]], mode='SYMMETRIC')
+                 .tf.pad([[0, 0], [3, 3], [3, 3], [0, 0]], mode='SYMMETRIC')
                  .Conv2D('conv0', NF, 7, padding='VALID')
                  .Conv2D('conv1', NF * 2, 3, strides=2)
                  .Conv2D('conv2', NF * 4, 3, strides=2)())
@@ -79,7 +79,7 @@ class Model(ModelDesc):
             l = (LinearWrap(l)
                  .Conv2DTranspose('deconv0', NF * 2, 3, strides=2)
                  .Conv2DTranspose('deconv1', NF * 1, 3, strides=2)
-                 .tf.pad([[0, 0], [0, 0], [3, 3], [3, 3]], mode='SYMMETRIC')
+                 .tf.pad([[0, 0], [3, 3], [3, 3], [0, 0]], mode='SYMMETRIC')
                  .Conv2D('convlast', 3, 7, padding='VALID', activation=tf.tanh, use_bias=True)())
         return l
     @auto_reuse_variable_scope
