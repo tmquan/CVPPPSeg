@@ -100,8 +100,6 @@ class Model(ModelDesc):
         with G.gradient_override_map({"Round": "Identity", "ArgMax": "Identity"}):
             pi, pa, pl = image, membr, label
 
-
-
             with tf.variable_scope('gen'):
                 with tf.device('/device:GPU:0'):
                     with tf.variable_scope('image2label'):
@@ -110,7 +108,10 @@ class Model(ModelDesc):
                                                  # nl=tf.nn.tanh, 
                                                  # nb_filters=32
                                                  )
-                        pil = tf_2imag(pil, maxVal=255.0)
+                        # pil = tf_2imag(pil, maxVal=255.0)
+                        avg, var = tf.nn.moments(pil, axis=[1,2,3], keep_dims=True)
+                        pil -= avg
+                        pil /= var
             losses = []         
             
             # with tf.name_scope('loss_mae'):
@@ -127,12 +128,17 @@ class Model(ModelDesc):
                 #discrim_loss  =  ### Optimization operations
                 # print pid
                 # pid = tf.nn.softmax(pid)
-                discrim_loss = supervised_clustering_loss(pil, 
+                discrim_loss, _, _, _ = discriminative_loss_single(pil, 
                                                          pl, 
                                                          3,            # Feature dim
                                                          (DIMZ, DIMY, DIMX),    # Label shape
-                                                         )
- 
+                                                         delta_v, 
+                                                         delta_d, 
+                                                         param_var, 
+                                                         param_dist, 
+                                                         param_reg)
+                # cluster = L2Clustering()
+                # discrim_loss = cluster.discriminative_loss(pl, pil)
 
                 losses.append(1e-2*discrim_loss)
                 add_moving_summary(discrim_loss)
@@ -147,7 +153,7 @@ class Model(ModelDesc):
             pz = tf.zeros_like(pi)
             viz = tf.concat([tf.concat([pi, 20*pl, 
                                             # 20*tf_2imag(pil), 
-                                            pil[...,0:1], pil[...,1:2], pil[...,2:3]], axis=2),
+                                            128*pil[...,0:1], 128*pil[...,1:2], 128*pil[...,2:3]], axis=2),
                              # tf.concat([pz,   pz, pad[...,0:1], pad[...,1:2], pad[...,2:3]], axis=2),
                              # tf.concat([pz, 5*pal, 255*pala[...,0:1], 255*pala[...,1:2], 255*pala[...,2:3]], axis=2),
                              ], axis=1)

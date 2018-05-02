@@ -110,7 +110,10 @@ class Model(ModelDesc):
                                                  # nl=tf.nn.tanh, 
                                                  # nb_filters=32
                                                  )
-                        pil = tf_2imag(pil, maxVal=255.0)
+                        # pil = tf_2imag(pil, maxVal=255.0)
+                        avg, var = tf.nn.moments(pil, axis=[1,2,3], keep_dims=True)
+                        pil -= avg
+                        pil /= var
             losses = []         
             
             # with tf.name_scope('loss_mae'):
@@ -152,7 +155,7 @@ class Model(ModelDesc):
             pz = tf.zeros_like(pi)
             viz = tf.concat([tf.concat([pi, 20*pl, 
                                             # 20*tf_2imag(pil), 
-                                            pil[...,0:1], pil[...,1:2], pil[...,2:3]], axis=2),
+                                            128*pil[...,0:1], 128*pil[...,1:2], 128*pil[...,2:3]], axis=2),
                              # tf.concat([pz,   pz, pad[...,0:1], pad[...,1:2], pad[...,2:3]], axis=2),
                              # tf.concat([pz, 5*pal, 255*pala[...,0:1], 255*pala[...,1:2], 255*pala[...,2:3]], axis=2),
                              ], axis=1)
