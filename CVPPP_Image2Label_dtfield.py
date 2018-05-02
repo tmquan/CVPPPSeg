@@ -335,7 +335,7 @@ if __name__ == '__main__':
     # test_ds  = get_data(args.data, isTrain=False, isValid=False, isTest=True)
 
 
-    # train_ds  = PrefetchDataZMQ(train_ds, 4)
+    train_ds  = PrefetchDataZMQ(train_ds, 4)
     train_ds  = PrintData(train_ds)
     # train_ds  = QueueInput(train_ds)
     model     = Model()
