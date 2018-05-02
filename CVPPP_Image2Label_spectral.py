@@ -80,7 +80,7 @@ class Model(ModelDesc):
                  .Conv2DTranspose('deconv0', NF * 2, 3, strides=2)
                  .Conv2DTranspose('deconv1', NF * 1, 3, strides=2)
                  .tf.pad([[0, 0], [3, 3], [3, 3], [0, 0]], mode='SYMMETRIC')
-                 .Conv2D('convlast', 3, 7, padding='VALID', activation=tf.tanh, use_bias=True)())
+                 .Conv2D('convlast', 16, 7, padding='VALID', activation=tf.tanh, use_bias=True)())
         return l
     @auto_reuse_variable_scope
     def discriminator(self, img):
@@ -109,9 +109,9 @@ class Model(ModelDesc):
                                                  # nb_filters=32
                                                  )
                         # pil = tf_2imag(pil, maxVal=255.0)
-                        avg, var = tf.nn.moments(pil, axes=[1,2,3], keep_dims=True)
+                        avg, var = tf.nn.moments(pil, axes=[1,2], keep_dims=True)
                         pil -= avg
-                        pil /= var
+                        pil /= (var+1e-6)
             losses = []         
             
             # with tf.name_scope('loss_mae'):
@@ -130,7 +130,7 @@ class Model(ModelDesc):
                 # pid = tf.nn.softmax(pid)
                 discrim_loss, _, _, _ = discriminative_loss_single(pil, 
                                                          pl, 
-                                                         3,            # Feature dim
+                                                         16,            # Feature dim
                                                          (DIMZ, DIMY, DIMX),    # Label shape
                                                          delta_v, 
                                                          delta_d, 
