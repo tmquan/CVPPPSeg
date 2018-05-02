@@ -80,7 +80,7 @@ class Model(ModelDesc):
                  .Conv2DTranspose('deconv0', NF * 2, 3, strides=2)
                  .Conv2DTranspose('deconv1', NF * 1, 3, strides=2)
                  .tf.pad([[0, 0], [3, 3], [3, 3], [0, 0]], mode='SYMMETRIC')
-                 .Conv2D('convlast', 3, 7, padding='VALID', activation=tf.tanh, use_bias=True)())
+                 .Conv2D('convlast', 1, 7, padding='VALID', activation=tf.tanh, use_bias=True)())
         return l
     @auto_reuse_variable_scope
     def discriminator(self, img):
