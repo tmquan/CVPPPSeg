@@ -154,7 +154,7 @@ class VisualizeRunner(Callback):
         for lst in self.dset.get_data():
             #image, level = lst
             vis = self.pred(lst)
-            print(vis.shape)
+            print(vis.sh)
             self.trainer.monitors.put_image('vis', vis)
 ###############################################################################
 class CVPPPDataFlow(ImageDataFlow):
@@ -286,19 +286,35 @@ class CVPPPDataFlow(ImageDataFlow):
         lst_labels, cnt_labels = np.unique(labels, return_counts=True)
         for label in lst_labels:
             if label != 0:
-                field = np.zeros_like(labels)
-                
-                field[labels==label]  = 1.0 # Mask the current label
-
-                #Perform distance transform
+                # Find center of mass
                 from scipy import ndimage
-                field = ndimage.distance_transform_edt(field)
+                field = np.zeros_like(labels)
+                field[labels==label]  = 1.0 # Mask the current label
+                cen = ndimage.measurements.center_of_mass(field)
+                newfield = np.zeros_like(labels)
+                newfield[cen] = 1.0
+                newfield = ndimage.distance_transform_edt(newfield)
 
                 # Normalize:
-                field = field/field.max() / 2.0 # From 0-1 to 0-0.5
+                newfield[field==0] = 1e3 
+                newfield -= newfield.min()
+                newfield[field==0] = 0
+                
+                newfield /= (newfield.max() * 2.0) # From 0-1 to 0-0.5
 
-                # Append to the final result
-                fields = fields + field
+                # field = np.zeros_like(labels)
+                
+                # field[labels==label]  = 1.0 # Mask the current label
+
+                # #Perform distance transform
+                # from scipy import ndimage
+                # field = ndimage.distance_transform_edt(field)
+
+                # # Normalize:
+                # field = field/field.max() / 2.0 # From 0-1 to 0-0.5
+
+                # # Append to the final result
+                # fields = fields + field
 
         return fields
 
