@@ -105,9 +105,10 @@ class Model(ModelDesc):
                 with tf.device('/device:GPU:0'):
                     with tf.variable_scope('image2level'):
                         pil, _  = self.generator(tf_2tanh(pi), 
-                                                 last_dim=1, 
-                                                 nl=tf.nn.tanh, 
-                                                 nb_filters=32)
+                                                 # last_dim=1, 
+                                                 # nl=tf.nn.tanh, 
+                                                 # nb_filters=32
+                                                 )
                         pil = tf_2imag(pil, maxVal=24)
                       
             losses = []         
