@@ -96,7 +96,7 @@ class Model(ModelDesc):
                 with tf.device('/device:GPU:0'):
                     with tf.variable_scope('image2label'):
                         pil, pid  = self.generator(tf_2tanh(pi), 
-                                                 last_dim=664, 
+                                                 last_dim=64, 
                                                  nl=INLReLU, 
                                                  nb_filters=32)
                         # avg, var = tf.nn.moments(pil, axes=[1,2,3], keep_dims=True)
