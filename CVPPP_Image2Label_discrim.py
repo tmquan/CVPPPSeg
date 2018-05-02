@@ -228,8 +228,8 @@ class VisualizeRunner(Callback):
                 X_flatten = np.reshape(X, newshape=(-1, feature_dim))
                 avg = X_flatten.mean()
                 std = X_flatten.std()
-                X_flatten -= avg
-                X_flatten /= std
+                # X_flatten -= avg
+                # X_flatten /= std
                 print(X.shape)
                 print(X_flatten.shape)
                
