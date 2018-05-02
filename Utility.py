@@ -324,125 +324,125 @@ class ImageDataFlow(RNGDataFlow):
     
     
 
-# class CVPPPDataFlow(ImageDataFlow):
-#     ###############################################################################
-#     def AugmentPair(self, src_image, src_label, pipeline, seed=None, verbose=False):
-#         np.random.seed(seed) if seed else np.random.seed(2015)
+class CVPPPDataFlow(ImageDataFlow):
+    ###############################################################################
+    def AugmentPair(self, src_image, src_label, pipeline, seed=None, verbose=False):
+        np.random.seed(seed) if seed else np.random.seed(2015)
         
-#         # print(src_image.shape, src_label.shape, aug_image.shape, aug_label.shape) if verbose else ''
-#         if src_image.ndim==2:
-#             src_image = np.expand_dims(src_image, 0)
-#             src_label = np.expand_dims(src_label, 0)
-#             # src_image = np.expand_dims(src_image, -1)
-#             # src_label = np.expand_dims(src_label, -1)
+        # print(src_image.shape, src_label.shape, aug_image.shape, aug_label.shape) if verbose else ''
+        if src_image.ndim==2:
+            src_image = np.expand_dims(src_image, 0)
+            src_label = np.expand_dims(src_label, 0)
+            # src_image = np.expand_dims(src_image, -1)
+            # src_label = np.expand_dims(src_label, -1)
         
-#         # Create the result
-#         aug_images = [] #np.zeros_like(src_image)
-#         aug_labels = [] #np.zeros_like(src_label)
+        # Create the result
+        aug_images = [] #np.zeros_like(src_image)
+        aug_labels = [] #np.zeros_like(src_label)
         
-#         # print(src_image.shape, src_label.shape)
-#         for z in range(src_image.shape[0]):
-#             #Image and numpy has different matrix order
-#             pipeline.set_seed(seed)
-#             aug_image = pipeline._execute_with_array(src_image[z,...]) 
-#             pipeline.set_seed(seed)
-#             aug_label = pipeline._execute_with_array(src_label[z,...])        
-#             aug_images.append(aug_image)
-#             aug_labels.append(aug_label)
-#         aug_images = np.array(aug_images).astype(np.float32)
-#         aug_labels = np.array(aug_labels).astype(np.float32)
-#         # print(aug_images.shape, aug_labels.shape)
-#         return aug_images, aug_labels
-#     ###############################################################################
-#     def ShuffleIndices(self, src_colors, num_colors=18, seed=None, verbose=False):
-#         np.random.seed(seed) if seed else np.random.seed(2015)
+        # print(src_image.shape, src_label.shape)
+        for z in range(src_image.shape[0]):
+            #Image and numpy has different matrix order
+            pipeline.set_seed(seed)
+            aug_image = pipeline._execute_with_array(src_image[z,...]) 
+            pipeline.set_seed(seed)
+            aug_label = pipeline._execute_with_array(src_label[z,...])        
+            aug_images.append(aug_image)
+            aug_labels.append(aug_label)
+        aug_images = np.array(aug_images).astype(np.float32)
+        aug_labels = np.array(aug_labels).astype(np.float32)
+        # print(aug_images.shape, aug_labels.shape)
+        return aug_images, aug_labels
+    ###############################################################################
+    def ShuffleIndices(self, src_colors, num_colors=18, seed=None, verbose=False):
+        np.random.seed(seed) if seed else np.random.seed(2015)
         
-#         # Unique unsort version
-#         _, idx_colors = np.unique(src_colors, return_index=True)
-#         #display(idx_colors)
-#         lst_colors = src_colors.flatten()[np.sort(idx_colors)]# np.unique(colors)
-#         # print(lst_colors) if verbose else ''
-#         num_colors = len(lst_colors)
-#         # print(num_colors) if verbose else ''
+        # Unique unsort version
+        _, idx_colors = np.unique(src_colors, return_index=True)
+        #display(idx_colors)
+        lst_colors = src_colors.flatten()[np.sort(idx_colors)]# np.unique(colors)
+        # print(lst_colors) if verbose else ''
+        num_colors = len(lst_colors)
+        # print(num_colors) if verbose else ''
         
-#         # Take the label
-#         labels, num_labels = skimage.measure.label(src_colors, return_num=True)
-#         lst_labels, cnt_labels = np.unique(labels, return_counts=True)
-#         # print(lst_labels, num_labels, cnt_labels)  if verbose else ''
+        # Take the label
+        labels, num_labels = skimage.measure.label(src_colors, return_num=True)
+        lst_labels, cnt_labels = np.unique(labels, return_counts=True)
+        # print(lst_labels, num_labels, cnt_labels)  if verbose else ''
            
-#         # Permutation here
-#         aug_colors = np.zeros_like(src_colors)
-#         indices = np.arange(1, num_colors)
-#         shuffle = np.random.permutation(indices)
-#         # print(indices)  if verbose else ''
-#         # print(shuffle)  if verbose else ''
+        # Permutation here
+        aug_colors = np.zeros_like(src_colors)
+        indices = np.arange(1, num_colors)
+        shuffle = np.random.permutation(indices)
+        # print(indices)  if verbose else ''
+        # print(shuffle)  if verbose else ''
 
-#         for i, s in zip(indices, shuffle):
-#             aug_colors[src_colors==i] = s
-#         return aug_colors
+        for i, s in zip(indices, shuffle):
+            aug_colors[src_colors==i] = s
+        return aug_colors
 
-#     ###############################################################################
-#     def get_data(self):
-#         for k in range(self._size):
-#             #
-#             # Pick randomly a tuple of training instance
-#             #
-#             rand_index = self.data_rand.randint(0, len(self.images))
-#             image_p = self.images[rand_index].copy ()
-#             label_p = self.labels[rand_index].copy ()
+    ###############################################################################
+    def get_data(self):
+        for k in range(self._size):
+            #
+            # Pick randomly a tuple of training instance
+            #
+            rand_index = self.data_rand.randint(0, len(self.images))
+            image_p = self.images[rand_index].copy ()
+            label_p = self.labels[rand_index].copy ()
 
-#             seed = time_seed () #self.rng.randint(0, 20152015)
+            seed = time_seed () #self.rng.randint(0, 20152015)
             
-#             # Cut 1 or 3 slices along z, by define DIMZ, the same for paired, randomly for unpaired
+            # Cut 1 or 3 slices along z, by define DIMZ, the same for paired, randomly for unpaired
 
 
-#             # dimz, dimy, dimx = image_p.shape
-#             # # The same for pair
-#             # randz = self.data_rand.randint(0, dimz-self.DIMZ+1)
-#             # randy = self.data_rand.randint(0, dimy-self.DIMY+1)
-#             # randx = self.data_rand.randint(0, dimx-self.DIMX+1)
+            # dimz, dimy, dimx = image_p.shape
+            # # The same for pair
+            # randz = self.data_rand.randint(0, dimz-self.DIMZ+1)
+            # randy = self.data_rand.randint(0, dimy-self.DIMY+1)
+            # randx = self.data_rand.randint(0, dimx-self.DIMX+1)
 
-#             # image_p = image_p[randz:randz+self.DIMZ,randy:randy+self.DIMY,randx:randx+self.DIMX]
-#             # label_p = label_p[randz:randz+self.DIMZ,randy:randy+self.DIMY,randx:randx+self.DIMX]
-#             p_total = Augmentor.Pipeline()
-#             p_total.resize(probability=1, width=self.DIMY, height=self.DIMX, resample_filter='NEAREST')
-#             image_p, label_p = self.AugmentPair(image_p.copy(), label_p.copy(), p_total, seed=seed)
+            # image_p = image_p[randz:randz+self.DIMZ,randy:randy+self.DIMY,randx:randx+self.DIMX]
+            # label_p = label_p[randz:randz+self.DIMZ,randy:randy+self.DIMY,randx:randx+self.DIMX]
+            p_total = Augmentor.Pipeline()
+            p_total.resize(probability=1, width=self.DIMY, height=self.DIMX, resample_filter='NEAREST')
+            image_p, label_p = self.AugmentPair(image_p.copy(), label_p.copy(), p_total, seed=seed)
             
 
-#             if self.isTrain:
-#                 # Augment the pair image for same seed
-#                 p_train = Augmentor.Pipeline()
-#                 p_train.rotate_random_90(probability=0.75, resample_filter=Image.NEAREST)
-#                 p_train.rotate(probability=1, max_left_rotation=10, max_right_rotation=10, resample_filter=Image.NEAREST)
-#                 p_train.random_distortion(probability=1, grid_width=4, grid_height=4, magnitude=5)
-#                 # p_train.zoom_random(probability=0.5, percentage_area=0.8)
-#                 p_train.flip_random(probability=0.75)
+            if self.isTrain:
+                # Augment the pair image for same seed
+                p_train = Augmentor.Pipeline()
+                p_train.rotate_random_90(probability=0.75, resample_filter=Image.NEAREST)
+                p_train.rotate(probability=1, max_left_rotation=10, max_right_rotation=10, resample_filter=Image.NEAREST)
+                p_train.random_distortion(probability=1, grid_width=4, grid_height=4, magnitude=5)
+                # p_train.zoom_random(probability=0.5, percentage_area=0.8)
+                p_train.flip_random(probability=0.75)
 
-#                 image_p, label_p = self.AugmentPair(image_p.copy(), label_p.copy(), p_train, seed=seed)
+                image_p, label_p = self.AugmentPair(image_p.copy(), label_p.copy(), p_train, seed=seed)
                 
-#                 image_p = self.random_reverse(image_p, seed=seed)
-#                 label_p = self.random_reverse(label_p, seed=seed)
+                image_p = self.random_reverse(image_p, seed=seed)
+                label_p = self.random_reverse(label_p, seed=seed)
                 
 
 
-#             # # Calculate linear label
-#             if self.pruneLabel:
-#                 label_p, nb_labels_p = skimage.measure.label(label_p.copy(), return_num=True)
+            # # Calculate linear label
+            if self.pruneLabel:
+                label_p, nb_labels_p = skimage.measure.label(label_p.copy(), return_num=True)
         
 
-#             #Expand dim to make single channel
-#             image_p = np.expand_dims(image_p, axis=-1)
-#             # membr_p = np.expand_dims(membr_p, axis=-1)
-#             label_p = np.expand_dims(label_p, axis=-1)
+            #Expand dim to make single channel
+            image_p = np.expand_dims(image_p, axis=-1)
+            # membr_p = np.expand_dims(membr_p, axis=-1)
+            label_p = np.expand_dims(label_p, axis=-1)
 
-#             #Return the membrane
-#             # membr_p = np_seg_to_aff(label_p)
-#             membr_p = image_p.copy()
+            #Return the membrane
+            # membr_p = np_seg_to_aff(label_p)
+            membr_p = image_p.copy()
 
-#             yield [image_p.astype(np.float32), 
-#                    membr_p.astype(np.float32), 
-#                    label_p.astype(np.float32), 
-#                    ] 
+            yield [image_p.astype(np.float32), 
+                   membr_p.astype(np.float32), 
+                   label_p.astype(np.float32), 
+                   ] 
 
 # class SNEMI2DDataFlow(ImageDataFlow):
 #     ###############################################################################
