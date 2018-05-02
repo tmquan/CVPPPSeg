@@ -119,8 +119,8 @@ class Model(ModelDesc):
             # Segmentation
             pz = tf.zeros_like(pi)
             viz = tf.concat([tf.concat([pi, 20*pl,  20*pil], axis=2),
-                             tf.concat([pz, 255*2*(pl-tf.cast(tf.cast(pl, tf.int32), tf.float32),  
-                                            255*2*(pil-tf.cast(tf.cast(pil, tf.int32), tf.float32),  
+                             tf.concat([pz, 255*2*(pl-tf.cast(tf.cast(pl, tf.int32), tf.float32)),  
+                                            255*2*(pil-tf.cast(tf.cast(pil, tf.int32), tf.float32)),  
                                             ], axis=2),
                              ], axis=1)
             # viz = tf_2imag(viz)
