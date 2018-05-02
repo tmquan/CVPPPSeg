@@ -127,17 +127,12 @@ class Model(ModelDesc):
                 #discrim_loss  =  ### Optimization operations
                 # print pid
                 # pid = tf.nn.softmax(pid)
-                discrim_loss, _, _, _ = discriminative_loss_single(pil, 
+                discrim_loss = supervised_clustering_loss(pil, 
                                                          pl, 
                                                          16,            # Feature dim
                                                          (DIMZ, DIMY, DIMX),    # Label shape
-                                                         delta_v, 
-                                                         delta_d, 
-                                                         param_var, 
-                                                         param_dist, 
-                                                         param_reg)
-                # cluster = L2Clustering()
-                # discrim_loss = cluster.discriminative_loss(pl, pil)
+                                                         )
+ 
 
                 losses.append(1e-2*discrim_loss)
                 add_moving_summary(discrim_loss)
