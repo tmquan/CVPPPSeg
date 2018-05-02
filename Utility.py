@@ -52,6 +52,7 @@ import Augmentor
 ###############################################################################
 EPOCH_SIZE = 100
 NB_FILTERS = 32   # channel size
+NF = 32   # channel size
 
 DIMX  = 320
 DIMY  = 320
