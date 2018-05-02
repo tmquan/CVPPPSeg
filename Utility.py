@@ -236,6 +236,7 @@ def arch_generator(img, last_dim=1, nl=INLReLU, nb_filters=NB_FILTERS):
         d2 = residual_dec('d2', d3+e2, nb_filters*2)
         d1 = residual_dec('d1', d2+e1, nb_filters*1)
         d0 = residual_dec('d0', d1+e0, nb_filters*1) 
+        d0 = Dropout('dr', d0, 0.5)
         dd =  (LinearWrap(d0)
                 .Conv2D('convlast', last_dim, kernel_shape=3, stride=1, padding='SAME', nl=nl, use_bias=True) ())
         return dd, d0
