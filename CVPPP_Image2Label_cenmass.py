@@ -394,7 +394,7 @@ if __name__ == '__main__':
             callbacks       =   [
                 PeriodicTrigger(ModelSaver(), every_k_epochs=50),
                 PeriodicTrigger(VisualizeRunner(valid_ds), every_k_epochs=5),
-                ScheduledHyperParamSetter('learning_rate', [(0, 2e-4), (100, 1e-4), (200, 1e-5), (300, 1e-6)], interp='linear')
+                ScheduledHyperParamSetter('learning_rate', [(0, 2e-5), (100, 1e-5), (200, 1e-6), (300, 1e-6)], interp='linear')
                 ],
             max_epoch       =   500, 
             session_init    =    SaverRestore(args.load) if args.load else None,
