@@ -129,7 +129,7 @@ class Model(ModelDesc):
         G = tf.get_default_graph()
         pi, pm, pl = image, membr, label
 
-        feature_dim=16
+        feature_dim=64
         # Construct the graph
         with G.gradient_override_map({"Round": "Identity", "ArgMax": "Identity"}):
             with tf.variable_scope('gen'):

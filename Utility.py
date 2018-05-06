@@ -207,16 +207,19 @@ def arch_fusionnet_2d(img, last_dim=1, nl=INLReLU, nb_filters=32):
     with argscope([Conv2D], nl=INLReLU, kernel_shape=3, stride=2, padding='VALID'):
         with argscope([Deconv2D], nl=INLReLU, kernel_shape=3, stride=2, padding='SAME'):
             e0 = residual_enc('e0', img, nb_filters*1)
+            e0 = Dropout('drop0', e0, 0.5)
             e1 = residual_enc('e1',  e0, nb_filters*2)
             e2 = residual_enc('e2',  e1, nb_filters*4)
 
             e3 = residual_enc('e3',  e2, nb_filters*8)
-            # e3 = Dropout('dr', e3, 0.5)
+            e3 = Dropout('dr', e3, 0.5)
 
             d3 = residual_dec('d3',    e3, nb_filters*4)
             d2 = residual_dec('d2', d3+e2, nb_filters*2)
             d1 = residual_dec('d1', d2+e1, nb_filters*1)
+            d1 = Dropout('drop1', d1, 0.5)
             d0 = residual_dec('d0', d1+e0, nb_filters*1) 
+
             dp = tf.pad( d0, name='pad_o', mode='REFLECT', paddings=[[0,0], [3//2,3//2], [3//2,3//2], [0,0]])
             dd = Conv2D('convlast', dp, last_dim, kernel_shape=3, stride=1, padding='VALID', nl=nl, use_bias=True) 
             return dd
