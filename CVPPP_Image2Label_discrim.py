@@ -140,14 +140,16 @@ class Model(ModelDesc):
                         pim = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
                     with tf.variable_scope('image2embeds'):
                         pif = self.generator(pim, last_dim=feature_dim, nl=INLReLU, nb_filters=32)
-
+                        avg, var = tf.nn.moments(pif, axes=[0,1,2,3], keep_dims=True)
+                        pif -= avg
+                        pif /= (var+1e-6)
         # pid = tf_2imag(pid, maxVal=1.0)
         pif = tf.identity(pif, name='pif')
         pim = tf.identity(pim, name='pim')
         #                 pif, pim = self.generator(tf_2tanh(pi), last_dim=64, nl=tf.nn.tanh, nb_filters=32)
 
         pim = tf_2imag(pim, maxVal=1.0)
-        # pif = tf_2imag(pif, maxVal=1.0)
+        pif = tf_2imag(pif, maxVal=1.0)
         # # pim = tf.identity(pid[...,0:1], name='pim')
         # # pif = tf.identity(pid[...,1::], name='pif')
         # Define loss hre
