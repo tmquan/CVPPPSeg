@@ -139,15 +139,15 @@ class Model(ModelDesc):
                     with tf.variable_scope('image2membrs'):
                         pim = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
                     with tf.variable_scope('image2embeds'):
-                        pif = self.generator(pim, last_dim=feature_dim, nl=tf.nn.tanh, nb_filters=32)
+                        pif = self.generator(pim, last_dim=feature_dim, nl=INLReLU, nb_filters=32)
 
         # pid = tf_2imag(pid, maxVal=1.0)
-        pim = tf.identity(pim, name='pim')
         pif = tf.identity(pif, name='pif')
+        pim = tf.identity(pim, name='pim')
         #                 pif, pim = self.generator(tf_2tanh(pi), last_dim=64, nl=tf.nn.tanh, nb_filters=32)
 
-        pif = tf_2imag(pif, maxVal=1.0)
         pim = tf_2imag(pim, maxVal=1.0)
+        # pif = tf_2imag(pif, maxVal=1.0)
         # # pim = tf.identity(pid[...,0:1], name='pim')
         # # pif = tf.identity(pid[...,1::], name='pif')
         # Define loss hre
