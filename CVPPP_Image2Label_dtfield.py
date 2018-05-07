@@ -123,7 +123,7 @@ class Model(ModelDesc):
                                                 pil - tf.cast(tf.cast(pl, tf.int32), tf.float32)), 
                                              
                                         name='mae_if')
-                losses.append(1e0*mae_if)
+                losses.append(1e2*mae_if)
                 add_moving_summary(mae_if)
 
          

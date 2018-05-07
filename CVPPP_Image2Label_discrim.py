@@ -134,16 +134,20 @@ class Model(ModelDesc):
         with G.gradient_override_map({"Round": "Identity", "ArgMax": "Identity"}):
             with tf.variable_scope('gen'):
                 with tf.device('/device:GPU:0'):
+                    # with tf.variable_scope('image2embeds'):
+                    #     pid = self.generator(tf_2tanh(pi), last_dim=feature_dim+1, nl=tf.nn.tanh, nb_filters=32)
+                    with tf.variable_scope('image2membrs'):
+                        pim = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
                     with tf.variable_scope('image2embeds'):
-                        pid = self.generator(tf_2tanh(pi), last_dim=feature_dim+1, nl=tf.nn.tanh, nb_filters=32)
+                        pif = self.generator(pim, last_dim=feature_dim+1, nl=tf.nn.tanh, nb_filters=32)
 
-        pid = tf_2imag(pid, maxVal=1.0)
+        # pid = tf_2imag(pid, maxVal=1.0)
         pim = tf.identity(pid[...,0:1], name='pim')
         pif = tf.identity(pid[...,1::], name='pif')
         #                 pif, pim = self.generator(tf_2tanh(pi), last_dim=64, nl=tf.nn.tanh, nb_filters=32)
 
-        # pif = tf_2imag(pif, maxVal=1.0)
-        # pim = tf_2imag(pim, maxVal=1.0)
+        pif = tf_2imag(pif, maxVal=1.0)
+        pim = tf_2imag(pim, maxVal=1.0)
         # # pim = tf.identity(pid[...,0:1], name='pim')
         # # pif = tf.identity(pid[...,1::], name='pif')
         # Define loss hre
@@ -362,11 +366,11 @@ if __name__ == '__main__':
             model           =   model, 
             dataflow        =   train_ds,
             callbacks       =   [
-                PeriodicTrigger(ModelSaver(), every_k_epochs=500),
+                PeriodicTrigger(ModelSaver(), every_k_epochs=50),
                 PeriodicTrigger(VisualizeRunner(valid_ds), every_k_epochs=5),
                 ScheduledHyperParamSetter('learning_rate', [(0, 2e-4), (100, 1e-4), (200, 1e-5), (300, 1e-6)], interp='linear')
                 ],
-            max_epoch       =   10000, 
+            max_epoch       =   2000, 
             session_init    =   SaverRestore(args.load) if args.load else None,
             )
     
