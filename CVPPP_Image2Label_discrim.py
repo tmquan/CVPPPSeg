@@ -139,7 +139,7 @@ class Model(ModelDesc):
                     with tf.variable_scope('image2membrs'):
                         pim = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
                     with tf.variable_scope('image2embeds'):
-                        pif = self.generator(pim, last_dim=feature_dim+1, nl=tf.nn.tanh, nb_filters=32)
+                        pif = self.generator(pim, last_dim=feature_dim, nl=tf.nn.tanh, nb_filters=32)
 
         # pid = tf_2imag(pid, maxVal=1.0)
         pim = tf.identity(pim, name='pim')
