@@ -139,10 +139,10 @@ class Model(ModelDesc):
                     with tf.variable_scope('image2membrs'):
                         pim = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
                     with tf.variable_scope('image2embeds'):
-                        pif = self.generator(pim, last_dim=feature_dim, nl=INLReLU, nb_filters=32)
-                        avg, var = tf.nn.moments(pif, axes=[0,1,2,3], keep_dims=True)
-                        pif -= avg
-                        pif /= (var+1e-6)
+                        pif = self.generator(pim, last_dim=feature_dim, nl=tf.nn.tanh, nb_filters=32)
+                        # avg, var = tf.nn.moments(pif, axes=[0,1,2,3], keep_dims=True)
+                        # pif -= avg
+                        # pif /= (var+1e-6)
         # pid = tf_2imag(pid, maxVal=1.0)
         pif = tf.identity(pif, name='pif')
         pim = tf.identity(pim, name='pim')
@@ -158,7 +158,7 @@ class Model(ModelDesc):
         with tf.name_scope('loss_aff'):
             aff_im = tf.identity(1.0 - dice_coe(pim, pm, axis=[0,1,2,3], loss_type='jaccard'), 
                                  name='aff_im')  
-            losses.append(1e2*aff_im)
+            losses.append(1e1*aff_im)
             add_moving_summary(aff_im)
 
         with tf.name_scope('loss_mae'):
@@ -182,7 +182,7 @@ class Model(ModelDesc):
                                                      param_dist, 
                                                      param_reg)
 
-            losses.append(1e-2*discrim_loss)
+            losses.append(1e-1*discrim_loss)
             add_moving_summary(discrim_loss)
         # Aggregate final loss
         self.cost = tf.reduce_sum(losses, name='self.cost')
