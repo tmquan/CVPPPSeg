@@ -129,7 +129,7 @@ class Model(ModelDesc):
         G = tf.get_default_graph()
         pi, pm, pl = image, membr, label
 
-        feature_dim=64
+        feature_dim=16
         # Construct the graph
         with G.gradient_override_map({"Round": "Identity", "ArgMax": "Identity"}):
             with tf.variable_scope('gen'):
@@ -210,22 +210,97 @@ class VisualizeRunner(Callback):
 
     def _setup_graph(self):
         self.pred = self.trainer.get_predictor(
-            ['image', 'membr', 'label'], ['viz'])
+            ['image', 'membr', 'label'], ['viz', 'pim', 'pif'])
 
     def _before_train(self):
         pass
 
     def _trigger(self):
         for lst in self.dset.get_data():
-            viz_test = self.pred(lst)
+            viz, pim, pif = self.pred(lst)
             viz_test = np.squeeze(np.array(viz_test))
             self.trainer.monitors.put_image('viz_test', viz_test)
 
+
+            def np_func(X, algorithm, feature_dim=None, label_shape=None, n_clusters=12, n_jobs=4):
+                # Perform clustering on high dimensional channel image
+                feats_shape = X.shape
+                if feature_dim==None:
+                    feature_dim = feats_shape[-1]
+                    print 'Feature_dim', feature_dim
+                
+                # Flatten and normalize X
+                X_flatten = np.reshape(X, newshape=(-1, feature_dim))
+                avg = X_flatten.mean()
+                std = X_flatten.std()
+                # X_flatten -= avg
+                # X_flatten /= std
+                print(X.shape)
+                print(X_flatten.shape)
+               
+
+                print ('Perform clustering, might take some time ...')
+                tic = time.time()
+                algorithm.fit(X_flatten)
+                # y_pred_flatten = algorithm.fit_predict(X_flatten)
+                print ('Time for clustering', time.time() - tic)
+
+
+                # Get the result in float32
+                y_pred_flatten = algorithm.labels_.astype(np.float32)
+                if label_shape:
+                    y_pred = np.reshape(y_pred_flatten, label_shape)
+                else
+                    y_pred = y_pred_flatten
+
+                print(label_shape)
+                print(y_pred_flatten.shape)
+                print(X_flatten.max())
+                print(X_flatten.min())
+                print(X_flatten.mean())
+                print(X_flatten.std())
+                print(y_pred_flatten.max())
+                print(y_pred_flatten.min())
+
+
+                return y_pred
+
+            # Having mask and high dimensional space, so what's next?
+            feature_dim = 16
+            # First squeeze everything
+            pim = np.squeeze(np.array(pim)) #2d image
+            pif = np.squeeze(np.array(pif)) #2d image
+
+            pim_flatten = np.reshape(pim, [-1])
+            pif_flatten = np.reshape(pif, [-1, feature_dim])
+
+            loc_1d = pim_flatten>0      # Find the location of semantic segmentation
+            idx_1d = np.where(loc_1d)   # Find the indices of semantic segmentation
+
+            #Filter the high dim space
+            pif_masked_flatten = pif_flatten[loc]
+
+            # Cluster them
+            from sklearn.cluster import MeanShift, estimate_bandwidth
+            from sklearn.cluster import DBSCAN, SpectralClustering
+            from sklearn import cluster
+            algorithm = cluster.MeanShift(bandwidth, n_jobs=n_jobs)
+            algorithm = cluster.MeanShift(bandwidth= self.bandwidth, bin_seeding=True, n_jobs=4)
+            pil_masked_flatten = np_func(pif_masked_flatten, algorithm, 
+                                         feature_dim=feature_dim)
+
+            # Reshape the label
+            pil_flatten = np.zeros_like(pim_flatten)
+            pil_flatten[idx_1d] = pil_masked_flatten
+            pil = np.reshape(pil_flatten, pim.shape)
+
+            self.trainer.monitors.put_image('pim_test', pim_test*255)
+            self.trainer.monitors.put_image('pil_test', pil_test*20)
 ###############################################################################
 def get_data(dataDir, isTrain=False, isValid=False, isTest=False, shape=[16, 320, 320]):
     # Process the directories 
     if isTrain:
-        num=500
+        num=5
         names = ['trainA', 'trainB']
     if isValid:
         num=1
