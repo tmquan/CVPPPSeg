@@ -139,7 +139,8 @@ class Model(ModelDesc):
                     with tf.variable_scope('image2membrs'):
                         pim = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
                     with tf.variable_scope('image2embeds'):
-                        pif = self.generator(pim, last_dim=feature_dim, nl=tf.nn.tanh, nb_filters=32)
+                        # pif = self.generator(tf.concat([pim, tf_2tanh(pi)], axis=-1), last_dim=feature_dim, nl=INLReLU, nb_filters=32)
+                        pif = self.generator(pim, last_dim=feature_dim, nl=INLReLU, nb_filters=32)
                         # avg, var = tf.nn.moments(pif, axes=[0,1,2,3], keep_dims=True)
                         # pif -= avg
                         # pif /= (var+1e-6)
@@ -167,8 +168,8 @@ class Model(ModelDesc):
             add_moving_summary(mae_im)
 
         with tf.name_scope('loss_discrim'):
-            delta_v     = 1.0 #0.5 #1.0 #args.dvar
-            delta_d     = 3.0 #1.5 #3.0 #args.ddist
+            delta_v     = 0.5 #1.0 #args.dvar
+            delta_d     = 1.5 #3.0 #args.ddist
             param_var   = 1.0 #args.var
             param_dist  = 1.0 #args.dist
             param_reg   = 0.001 #args.reg
@@ -218,8 +219,7 @@ class VisualizeRunner(Callback):
     def _trigger(self):
         for lst in self.dset.get_data():
             viz, pim, pif = self.pred(lst)
-            viz_test = np.squeeze(np.array(viz_test))
-            self.trainer.monitors.put_image('viz_test', viz_test)
+
 
 
             def np_func(X, algorithm, feature_dim=None, label_shape=None, n_clusters=12, n_jobs=4):
@@ -233,8 +233,8 @@ class VisualizeRunner(Callback):
                 X_flatten = np.reshape(X, newshape=(-1, feature_dim))
                 avg = X_flatten.mean()
                 std = X_flatten.std()
-                # X_flatten -= avg
-                # X_flatten /= std
+                X_flatten -= avg
+                X_flatten /= std
                 print(X.shape)
                 print(X_flatten.shape)
                
@@ -250,7 +250,7 @@ class VisualizeRunner(Callback):
                 y_pred_flatten = algorithm.labels_.astype(np.float32)
                 if label_shape:
                     y_pred = np.reshape(y_pred_flatten, label_shape)
-                else
+                else:
                     y_pred = y_pred_flatten
 
                 print(label_shape)
@@ -266,7 +266,7 @@ class VisualizeRunner(Callback):
                 return y_pred
 
             # Having mask and high dimensional space, so what's next?
-            feature_dim = 16
+            feature_dim=16
             # First squeeze everything
             pim = np.squeeze(np.array(pim)) #2d image
             pif = np.squeeze(np.array(pif)) #2d image
@@ -274,18 +274,20 @@ class VisualizeRunner(Callback):
             pim_flatten = np.reshape(pim, [-1])
             pif_flatten = np.reshape(pif, [-1, feature_dim])
 
-            loc_1d = pim_flatten>0      # Find the location of semantic segmentation
+            loc_1d = pim_flatten>0.5      # Find the location of semantic segmentation
             idx_1d = np.where(loc_1d)   # Find the indices of semantic segmentation
 
             #Filter the high dim space
-            pif_masked_flatten = pif_flatten[loc]
+            pif_masked_flatten = pif_flatten[loc_1d]
 
             # Cluster them
             from sklearn.cluster import MeanShift, estimate_bandwidth
             from sklearn.cluster import DBSCAN, SpectralClustering
             from sklearn import cluster
-            algorithm = cluster.MeanShift(bandwidth, n_jobs=n_jobs)
-            algorithm = cluster.MeanShift(bandwidth= self.bandwidth, bin_seeding=True, n_jobs=4)
+
+            bandwidth = 1.0 #
+            # bandwidth = cluster.estimate_bandwidth(pif_masked_flatten, quantile=0.3)
+            algorithm = cluster.MeanShift(bandwidth= bandwidth, bin_seeding=True, n_jobs=4)
             pil_masked_flatten = np_func(pif_masked_flatten, algorithm, 
                                          feature_dim=feature_dim)
 
@@ -294,13 +296,15 @@ class VisualizeRunner(Callback):
             pil_flatten[idx_1d] = pil_masked_flatten
             pil = np.reshape(pil_flatten, pim.shape)
 
-            self.trainer.monitors.put_image('pim_test', pim_test*255)
-            self.trainer.monitors.put_image('pil_test', pil_test*20)
+            self.trainer.monitors.put_image('pim_test', pim*255)
+            self.trainer.monitors.put_image('pil_test', pil*20)
+            viz = np.squeeze(np.array(viz))
+            self.trainer.monitors.put_image('viz_test', viz)
 ###############################################################################
 def get_data(dataDir, isTrain=False, isValid=False, isTest=False, shape=[16, 320, 320]):
     # Process the directories 
     if isTrain:
-        num=5
+        num=500
         names = ['trainA', 'trainB']
     if isValid:
         num=1

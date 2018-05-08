@@ -559,3 +559,21 @@ def discriminative_loss(prediction, correct_label, feature_dim, image_shape,
     return disc_loss, l_var, l_dist, l_reg
 
 
+
+
+def supervised_clustering_loss(prediction, correct_label, feature_dim, label_shape):
+    Y = tf.reshape(correct_label, [label_shape[1]*label_shape[2]*label_shape[0], 1])
+    F = tf.reshape(prediction, [label_shape[1]*label_shape[2]*label_shape[0], feature_dim])
+    diagy = tf.reduce_sum(Y,0)
+    onesy = tf.ones(diagy.get_shape())
+    J = tf.matmul(Y,tf.diag(tf.rsqrt(tf.where(tf.greater_equal(diagy,onesy),diagy,onesy))))
+    [S,U,V] = tf.svd(F)
+    Slength = tf.cast(tf.reduce_max(S.get_shape()), tf.float32)
+    maxS = tf.fill(tf.shape(S),tf.scalar_mul(tf.scalar_mul(1e-15,tf.reduce_max(S)),Slength))
+    ST = tf.where(tf.greater_equal(S,maxS),tf.div(tf.ones(S.get_shape()),S),tf.zeros(S.get_shape()))
+    pinvF = tf.transpose(tf.matmul(U,tf.matmul(tf.diag(ST),V,False,True)))
+    FJ = tf.matmul(pinvF,J)
+    G = tf.matmul(tf.subtract(tf.matmul(F,FJ),J),FJ,False,True)
+    loss = tf.reduce_sum(tf.multiply(tf.stop_gradient(G),F))
+    return loss
+
