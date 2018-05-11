@@ -359,7 +359,23 @@ def arch_fusionnet_3d(img, last_dim=1, nl=INLReLU, nb_filters=32, name='fusion3d
 
                 return out
 
-
+def arch_residual_fcn(img, last_dim=1, nl=INLReLU, nb_filters=32, name='residual_fcn'):
+    assert img is not None
+    with tf.variable_scope(name):
+        with argscope([Conv2D, Conv2DTranspose], activation=INReLU):
+            l = (LinearWrap(img)
+                 .tf.pad([[0, 0], [0, 0], [3, 3], [3, 3]], mode='SYMMETRIC')
+                 .Conv2D('conv0', nb_filters, 7, padding='VALID')
+                 .Conv2D('conv1', nb_filters * 2, 3, strides=2)
+                 .Conv2D('conv2', nb_filters * 4, 3, strides=2)())
+            for k in range(9):
+                l = Model.build_res_block(l, 'res{}'.format(k), nb_filters * 4, first=(k == 0))
+            l = (LinearWrap(l)
+                 .Conv2DTranspose('deconv0', nb_filters * 2, 3, strides=2)
+                 .Conv2DTranspose('deconv1', nb_filters * 1, 3, strides=2)
+                 .tf.pad([[0, 0], [0, 0], [3, 3], [3, 3]], mode='SYMMETRIC')
+                 .Conv2D('convlast', last_dim 7, padding='VALID', activation=nl, use_bias=True)())
+        return l
 ###############################################################################
 
 def time_seed ():
@@ -620,3 +636,9 @@ def calc_sbd(ins_seg_gt, ins_seg_pred):
     _dice1 = calc_bd(ins_seg_gt, ins_seg_pred)
     _dice2 = calc_bd(ins_seg_pred, ins_seg_gt)
     return min(_dice1, _dice2)
+
+
+import matplotlib.pyplot as plt
+def get_colors(inp, colormap, vmin=None, vmax=None):
+    norm = plt.Normalize(vmin, vmax)
+    return colormap(norm(inp))

@@ -116,7 +116,7 @@ class Model(ModelDesc):
     @auto_reuse_variable_scope
     def generator(self, image, last_dim=1, nl=INLReLU, nb_filters=32):
         assert image is not None
-        return  arch_fusionnet_2d(image, last_dim=last_dim, nl=nl, nb_filters=nb_filters)
+        return  arch_residual_fcn(image, last_dim=last_dim, nl=nl, nb_filters=nb_filters)
 
     def inputs(self):
         return [
@@ -129,7 +129,7 @@ class Model(ModelDesc):
         G = tf.get_default_graph()
         pi, pm, pl = image, membr, label
 
-        feature_dim=16
+        feature_dim=4
         # Construct the graph
         with G.gradient_override_map({"Round": "Identity", "ArgMax": "Identity"}):
             with tf.variable_scope('gen'):
@@ -141,6 +141,7 @@ class Model(ModelDesc):
                     with tf.variable_scope('image2embeds'):
                         # pif = self.generator(tf.concat([pim, tf_2tanh(pi)], axis=-1), last_dim=feature_dim, nl=INLReLU, nb_filters=32)
                         pif = self.generator(pim, last_dim=feature_dim, nl=INLReLU, nb_filters=32)
+                        pif = tf.nn.dropout(pif,     keep_prob=0.5)
                         # avg, var = tf.nn.moments(pif, axes=[0,1,2,3], keep_dims=True)
                         # pif -= avg
                         # pif /= (var+1e-6)
@@ -288,8 +289,8 @@ class VisualizeRunner(Callback):
             pil_flatten[idx_1d] = pil_masked_flatten
             pil = np.reshape(pil_flatten, pim.shape)
 
-            self.trainer.monitors.put_image('pim_test', pim*255)
-            self.trainer.monitors.put_image('pil_test', pil*20)
+            self.trainer.monitors.put_image('pim_test', pim)
+            self.trainer.monitors.put_image('pil_test', np.expand_dims(get_colors(np.squeeze(pil), plt.cm.PiYG)), axis=0)
             viz = np.squeeze(np.array(viz))
             self.trainer.monitors.put_image('viz_test', viz)
 ###############################################################################
@@ -470,10 +471,7 @@ def sample(dataDir, model_path, prefix='.'):
         pil_flatten[idx_1d] = pil_masked_flatten
         pil = np.reshape(pil_flatten, pim.shape)
 
-        import matplotlib.pyplot as plt
-        def get_colors(inp, colormap, vmin=None, vmax=None):
-            norm = plt.Normalize(vmin, vmax)
-            return colormap(norm(inp))
+        
 
         sbd = calc_sbd(label, pil)
         print 'Sbd ', sbd
