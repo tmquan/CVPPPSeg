@@ -324,78 +324,181 @@ def get_data(dataDir, isTrain=False, isValid=False, isTest=False, shape=[16, 320
                                pruneLabel=True)
     dset.reset_state()
     return dset
+
 ###############################################################################
 def sample(dataDir, model_path, prefix='.'):
     print("Starting...")
-    print(dataDir)
-    imageFiles = glob.glob(os.path.join(dataDir, '*.tif'))
-    print(imageFiles)
-    # Load the model 
+    # print(dataDir)
+    imageFiles = glob.glob(os.path.join(dataDir, 'testA/*.png'))
+    labelFiles = glob.glob(os.path.join(dataDir, 'testB/*.png'))
+    
+    imageFiles = natsorted(imageFiles)
+    labelFiles = natsorted(labelFiles)
+
+    def AugmentPair(src_image, src_label, pipeline, seed=None, verbose=False):
+        np.random.seed(seed) if seed else np.random.seed(2015)
+        # print(src_image.shape, src_label.shape, aug_image.shape, aug_label.shape) if verbose else ''
+        if src_image.ndim==2:
+            src_image = np.expand_dims(src_image, 0)
+            src_label = np.expand_dims(src_label, 0)
+        
+        # Create the result
+        aug_images = [] #np.zeros_like(src_image)
+        aug_labels = [] #np.zeros_like(src_label)
+        
+        # print(src_image.shape, src_label.shape)
+        for z in range(src_image.shape[0]):
+            #Image and numpy has different matrix order
+            pipeline.set_seed(seed)
+            aug_image = pipeline._execute_with_array(src_image[z,...]) 
+            pipeline.set_seed(seed)
+            aug_label = pipeline._execute_with_array(src_label[z,...])       
+            # Prune the label in here
+            aug_label, _ = skimage.measure.label(aug_label.copy(), return_num=True)         
+
+            aug_images.append(aug_image)
+            aug_labels.append(aug_label)
+
+       
+
+        aug_images = np.array(aug_images).astype(np.float32)
+        aug_labels = np.array(aug_labels).astype(np.float32)
+        # print(aug_images.shape, aug_labels.shape)
+        aug_images = np.expand_dims(aug_images, axis=-1)
+        aug_labels = np.expand_dims(aug_labels, axis=-1)
+        return aug_images, aug_labels
+
+
+
+    
+    p_total = Augmentor.Pipeline()
+    p_total.resize(probability=1, width=args.DIMY, height=args.DIMX, resample_filter='NEAREST')
+
+
+
     predict_func = OfflinePredictor(PredictConfig(
         model=Model(),
         session_init=get_model_loader(model_path),
-        input_names=['image', 'membr'],
-        output_names=['pim']))
+        input_names=['image', 'label'],
+        output_names=['pim', 'pif']))
 
-    for k in range(len(imageFiles)):
+    sbds = []
+    for k in range(len(imageFiles)): #range(1): #(len(imageFiles)):
         image = skimage.io.imread(imageFiles[k])
-        print(image.shape)
-        image = np.expand_dims(image, axis=3)
-        # image_0 = image.copy()
-        # image_1 = image.copy()
-        # image_2 = image.copy()
-        # image   = np.concatenate((image_0, image_1, image_2), axis=3) 
+        label = skimage.io.imread(labelFiles[k])
+        image, label = AugmentPair(image.copy(), label.copy(), p_total, seed=None)
         print(image.shape)
 
-        membr = np.zeros_like(image)
+        # image = np.expand_dims(image, axis=3)
+       
+        ### Start deployment
+       
 
-        skimage.io.imsave("tmp_image.tif", np.squeeze(image).astype(np.uint8))
-        skimage.io.imsave("tmp_membr.tif", np.squeeze(image).astype(np.uint8))
+        pred_pim, pred_pif = predict_func(image, label)
+        pred_pim = np.array(pred_pim)
+        pred_pif = np.array(pred_pif)
 
-        # group the input to form one datapoint
-        instance = []
-        instance.append(image)
-        instance.append(membr)
-        # instance = np.array(instance).astype(np.float32)
-        instance = np.array(instance).astype(np.float32)
-        import dask.array as da 
+        print pred_pim.shape
+        print pred_pif.shape
 
-        #print(instance)
-        da_instance = da.from_array(instance, chunks=(2, 10, 256, 256, 1))  #*** Modify here
-        #print(da_instance)
-        gp_instance = da.ghost.ghost(da_instance, depth={0:0, 1:3, 2:32, 3:32, 4:0}, 
-                                                  boundary={0:0, 1:'reflect', 2:'reflect', 3:'reflect', 4:0})
-        
-        def func(block, predict_func):
-            #print(block.shape)
-            bl_image = block[0,...,0:1]            
-            bl_membr = block[1,...,0:1]
-            pred = predict_func(bl_image, 
-                                bl_membr
-                                )
 
-            # d = pred[0] # First output
-            d = np.array(pred)
-            # print(d.shape)
 
-            # skimage.io.imsave("bl_image.tif", np.squeeze(bl_image).astype(np.uint8))
-            # skimage.io.imsave("bl_affnt.tif", np.squeeze(bl_affnt).astype(np.uint8))
-            #skimage.io.imsave("tmp_affnt.tif", 255*d.astype(np.uint8))
-            # Crop to the clean version
-            #d = d[640:1280, 640:1280]
-            # print(d.shape)
-            # d = np.expand_dims(d, axis=0) # concatenation
-            return d
+        def np_func(X, algorithm, feature_dim=None, label_shape=None, n_clusters=12, n_jobs=4):
+            # Perform clustering on high dimensional channel image
+            feats_shape = X.shape
+            if feature_dim==None:
+                feature_dim = feats_shape[-1]
+                print 'Feature_dim', feature_dim
             
-        gp_deployment = gp_instance.map_blocks(func, predict_func, dtype=np.float32)
-        gp_deployment = da.ghost.trim_internal(gp_deployment, {0:0, 1:3, 2:32, 3:32, 4:0})
+            # Flatten and normalize X
+            X_flatten = np.reshape(X, newshape=(-1, feature_dim))
+            avg = X_flatten.mean()
+            std = X_flatten.std()
+            X_flatten -= avg
+            X_flatten /= std
+            print(X.shape)
+            print(X_flatten.shape)
+           
 
-        gp_deployment = np.squeeze(np.array(255*gp_deployment)).astype(np.uint8) #.astype(np.uint8) # Modify here
-        np_deployment = 255*gp_deployment #.astype(np.uint8) # Modify here
-        print(np_deployment.shape)
-        skimage.io.imsave(prefix+"_{}.tif".format(k+1), np_deployment)
+            print ('Perform clustering, might take some time ...')
+            tic = time.time()
+            algorithm.fit(X_flatten)
+            # y_pred_flatten = algorithm.fit_predict(X_flatten)
+            print ('Time for clustering', time.time() - tic)
 
-        print("Ending...")
+
+            # Get the result in float32
+            y_pred_flatten = algorithm.labels_.astype(np.float32)
+            if label_shape:
+                y_pred = np.reshape(y_pred_flatten, label_shape)
+            else:
+                y_pred = y_pred_flatten
+
+            print(label_shape)
+            print(y_pred_flatten.shape)
+            print(X_flatten.max())
+            print(X_flatten.min())
+            print(X_flatten.mean())
+            print(X_flatten.std())
+            print(y_pred_flatten.max())
+            print(y_pred_flatten.min())
+
+
+            return y_pred
+
+         # Having mask and high dimensional space, so what's next?
+        
+        feature_dim=16
+        # First squeeze everything
+        pim = np.squeeze(np.array(pred_pim)) #2d image
+        pif = np.squeeze(np.array(pred_pif)) #2d image
+
+        pim_flatten = np.reshape(pim, [-1])
+        pif_flatten = np.reshape(pif, [-1, feature_dim])
+
+        loc_1d = pim_flatten>0.5      # Find the location of semantic segmentation
+        idx_1d = np.where(loc_1d)   # Find the indices of semantic segmentation
+
+        #Filter the high dim space
+        pif_masked_flatten = pif_flatten[loc_1d]
+
+        # Cluster them
+        from sklearn.cluster import MeanShift, estimate_bandwidth
+        from sklearn.cluster import DBSCAN, SpectralClustering
+        from sklearn import cluster
+
+        bandwidth = 1.0 #
+        # bandwidth = cluster.estimate_bandwidth(pif_masked_flatten, quantile=0.3)
+        # algorithm = cluster.MeanShift(bandwidth= bandwidth, bin_seeding=True, n_jobs=4)
+        algorithm = cluster.SpectralClustering(n_clusters=label.max(), eigen_solver='arpack', affinity="nearest_neighbors")
+
+        pil_masked_flatten = np_func(pif_masked_flatten, algorithm, 
+                                     feature_dim=feature_dim)
+
+        # Reshape the label
+        pil_flatten = np.zeros_like(pim_flatten)
+        pil_flatten[idx_1d] = pil_masked_flatten
+        pil = np.reshape(pil_flatten, pim.shape)
+
+        import matplotlib.pyplot as plt
+        def get_colors(inp, colormap, vmin=None, vmax=None):
+            norm = plt.Normalize(vmin, vmax)
+            return colormap(norm(inp))
+
+        sbd = calc_sbd(label, pil)
+        print 'Sbd ', sbd
+        sbds.append(sbd)
+
+        label = np.squeeze(label)
+        pil = np.squeeze(pil)
+        skimage.io.imsave('result_discrim/groundtruth/{}.png'.format(k+1), get_colors(label, plt.cm.PiYG)) #plt.cm.PiYG))
+        skimage.io.imsave('result_discrim/predict/{}.png'.format(k+1), get_colors(pil, plt.cm.PiYG)) #plt.cm.PiYG))
+    
+
+
+    mean_sbd = np.mean(sbds)
+    print 'Mean sbds ', mean_sbd
+    print("Ending...")
     return None
 ###############################################################################
 if __name__ == '__main__':
