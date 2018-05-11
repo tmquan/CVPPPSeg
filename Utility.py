@@ -361,20 +361,31 @@ def arch_fusionnet_3d(img, last_dim=1, nl=INLReLU, nb_filters=32, name='fusion3d
 
 def arch_residual_fcn(img, last_dim=1, nl=INLReLU, nb_filters=32, name='residual_fcn'):
     assert img is not None
+    # @staticmethod
+    def build_res_block(x, name, chan, first=False):
+        with tf.variable_scope(name):
+            input = x
+            return (LinearWrap(x)
+                    .tf.pad([[0, 0],[1, 1], [1, 1],[0, 0]], mode='SYMMETRIC')
+                    .Conv2D('conv0', chan, 3, padding='VALID')
+                    .tf.pad([[0, 0],[1, 1], [1, 1],[0, 0]], mode='SYMMETRIC')
+                    .Conv2D('conv1', chan, 3, padding='VALID', activation=tf.identity)
+                    .InstanceNorm('inorm')()) + input
+
     with tf.variable_scope(name):
         with argscope([Conv2D, Conv2DTranspose], activation=INReLU):
             l = (LinearWrap(img)
-                 .tf.pad([[0, 0], [0, 0], [3, 3], [3, 3]], mode='SYMMETRIC')
+                 .tf.pad([[0, 0], [3, 3], [3, 3], [0, 0]], mode='SYMMETRIC')
                  .Conv2D('conv0', nb_filters, 7, padding='VALID')
                  .Conv2D('conv1', nb_filters * 2, 3, strides=2)
                  .Conv2D('conv2', nb_filters * 4, 3, strides=2)())
             for k in range(9):
-                l = Model.build_res_block(l, 'res{}'.format(k), nb_filters * 4, first=(k == 0))
+                l = build_res_block(l, 'res{}'.format(k), nb_filters * 4, first=(k == 0))
             l = (LinearWrap(l)
                  .Conv2DTranspose('deconv0', nb_filters * 2, 3, strides=2)
                  .Conv2DTranspose('deconv1', nb_filters * 1, 3, strides=2)
-                 .tf.pad([[0, 0], [0, 0], [3, 3], [3, 3]], mode='SYMMETRIC')
-                 .Conv2D('convlast', last_dim 7, padding='VALID', activation=nl, use_bias=True)())
+                 .tf.pad([[0, 0], [3, 3], [3, 3], [0, 0]], mode='SYMMETRIC')
+                 .Conv2D('convlast', last_dim, 7, padding='VALID', activation=nl, use_bias=True)())
         return l
 ###############################################################################
 
