@@ -116,7 +116,7 @@ class Model(ModelDesc):
     @auto_reuse_variable_scope
     def generator(self, image, last_dim=1, nl=INLReLU, nb_filters=32):
         assert image is not None
-        return  arch_residual_fcn(image, last_dim=last_dim, nl=nl, nb_filters=nb_filters)
+        return  arch_fusionnet_2d(image, last_dim=last_dim, nl=nl, nb_filters=nb_filters)
 
     def inputs(self):
         return [
@@ -129,7 +129,7 @@ class Model(ModelDesc):
         G = tf.get_default_graph()
         pi, pm, pl = image, membr, label
 
-        feature_dim=4
+        feature_dim=16
         # Construct the graph
         with G.gradient_override_map({"Round": "Identity", "ArgMax": "Identity"}):
             with tf.variable_scope('gen'):
@@ -139,9 +139,10 @@ class Model(ModelDesc):
                     with tf.variable_scope('image2membrs'):
                         pim = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
                     with tf.variable_scope('image2embeds'):
-                        # pif = self.generator(tf.concat([pim, tf_2tanh(pi)], axis=-1), last_dim=feature_dim, nl=INLReLU, nb_filters=32)
                         pif = self.generator(pim, last_dim=feature_dim, nl=INLReLU, nb_filters=32)
-                        pif = tf.nn.dropout(pif,     keep_prob=0.5)
+                        # pif = tf.nn.dropout(pif,     keep_prob=0.5)
+                        pif = spatial_dropout(pif, 0.5, None, 'drop')
+                        # avg, var = tf.nn.moments(pif, axes=[0,1,2,3], keep_dims=True)
                         # pif -= avg
                         # pif /= (var+1e-6)
         # pid = tf_2imag(pid, maxVal=1.0)

@@ -653,3 +653,37 @@ import matplotlib.pyplot as plt
 def get_colors(inp, colormap, vmin=None, vmax=None):
     norm = plt.Normalize(vmin, vmax)
     return colormap(norm(inp))
+
+
+
+def spatial_dropout(x, p, seed, scope, is_training=True):
+    '''
+    Performs a 2D spatial dropout that drops layers instead of individual elements in an input feature map.
+    Note that p stands for the probability of dropping, but tf.nn.relu uses probability of keeping.
+    ------------------
+    Technical Details
+    ------------------
+    The noise shape must be of shape [batch_size, 1, 1, num_channels], with the height and width set to 1, because
+    it will represent either a 1 or 0 for each layer, and these 1 or 0 integers will be broadcasted to the entire
+    dimensions of each layer they interact with such that they can decide whether each layer should be entirely
+    'dropped'/set to zero or have its activations entirely kept.
+    --------------------------
+    INPUTS:
+    - x(Tensor): a 4D Tensor of the input feature map.
+    - p(float): a float representing the probability of dropping a layer
+    - seed(int): an integer for random seeding the random_uniform distribution that runs under tf.nn.relu
+    - scope(str): the string name for naming the spatial_dropout
+    - is_training(bool): to turn on dropout only when training. Optional.
+    OUTPUTS:
+    - output(Tensor): a 4D Tensor that is in exactly the same size as the input x,
+                      with certain layers having their elements all set to 0 (i.e. dropped).
+    '''
+    if is_training:
+        keep_prob = 1.0 - p
+        input_shape = x.get_shape().as_list()
+        noise_shape = tf.constant(value=[input_shape[0], 1, 1, input_shape[3]])
+        output = tf.nn.dropout(x, keep_prob, noise_shape, seed=seed, name=scope)
+
+        return output
+
+    return x
