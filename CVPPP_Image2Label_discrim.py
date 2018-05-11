@@ -137,11 +137,11 @@ class Model(ModelDesc):
                     # with tf.variable_scope('image2embeds'):
                     #     pid = self.generator(tf_2tanh(pi), last_dim=feature_dim+1, nl=tf.nn.tanh, nb_filters=32)
                     with tf.variable_scope('image2membrs'):
-                        pim = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
-                    with tf.variable_scope('image2embeds'):
-                        pif = self.generator(pim, last_dim=feature_dim, nl=INLReLU, nb_filters=32)
+                        pim, pif = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
+                    # with tf.variable_scope('image2embeds'):
+                    #     pif = self.generator(pim, last_dim=feature_dim, nl=INLReLU, nb_filters=32)
                         # pif = tf.nn.dropout(pif,     keep_prob=0.5)
-                        pif = spatial_dropout(pif, 0.5, None, 'drop')
+                        # pif = spatial_dropout(pif, 0.5, None, 'drop')
                         # avg, var = tf.nn.moments(pif, axes=[0,1,2,3], keep_dims=True)
                         # pif -= avg
                         # pif /= (var+1e-6)

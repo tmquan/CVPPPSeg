@@ -222,7 +222,7 @@ def arch_fusionnet_2d(img, last_dim=1, nl=INLReLU, nb_filters=32):
 
             dp = tf.pad( d0, name='pad_o', mode='REFLECT', paddings=[[0,0], [3//2,3//2], [3//2,3//2], [0,0]])
             dd = Conv2D('convlast', dp, last_dim, kernel_shape=3, stride=1, padding='VALID', nl=nl, use_bias=True) 
-            return dd
+            return dd, d0
 
 
 
