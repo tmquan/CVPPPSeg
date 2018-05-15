@@ -187,7 +187,7 @@ def residual_enc(x, chan, first=False, kernel_shape=3):
         x = residual('res_', x, chan, first=True)
         x = tf.pad(x, name='pad_o', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
         x = Conv2D('conv_o', x, chan, stride=1) 
-
+        x = Dropout('drop', x, 0.5)
         return x
 
 ###############################################################################
@@ -199,7 +199,7 @@ def residual_dec(x, chan, first=False, kernel_shape=3):
         # x = Deconv2D('deconv_o', x, chan, stride=2) 
         # x = tf.pad(x, name='pad_i', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
         # x = Conv2D('conv_i', x, chan, stride=1) 
-        
+        x = Dropout('drop', x, 0.5)
         x = Deconv2D('deconv_i', x, chan, stride=1) 
         x = residual('res2_', x, chan, first=True)
         x = Deconv2D('deconv_o', x, chan, stride=1)

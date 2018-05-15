@@ -129,16 +129,16 @@ class Model(ModelDesc):
         G = tf.get_default_graph()
         pi, pm, pl = image, membr, label
 
-        feature_dim=4
+        feature_dim=32
         # Construct the graph
         with G.gradient_override_map({"Round": "Identity", "ArgMax": "Identity"}):
             with tf.variable_scope('gen'):
                 with tf.device('/device:GPU:0'):
-                    with tf.variable_scope('image2embeds'):
+                    # with tf.variable_scope('image2embeds'):
                         # pif = self.generator(tf.concat([pim, tf_2tanh(pi)], axis=-1), last_dim=feature_dim, nl=INLReLU, nb_filters=32)
-                        pif, _ = self.generator(tf_2tanh(pi), last_dim=feature_dim, nl=INLReLU, nb_filters=32)
+                        # pif, _ = self.generator(tf_2tanh(pi), last_dim=feature_dim, nl=INLReLU, nb_filters=32)
                     with tf.variable_scope('image2membrs'):
-                        pim, _ = self.generator(pif, last_dim=1, nl=tf.nn.tanh, nb_filters=32)
+                        pim, pif = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
 
         # pid = tf_2imag(pid, maxVal=1.0)
         pif = tf.identity(pif, name='pif')
@@ -254,7 +254,7 @@ class VisualizeRunner(Callback):
                 return y_pred
 
             # Having mask and high dimensional space, so what's next?
-            feature_dim=4
+            feature_dim=32
             # First squeeze everything
             pim = np.squeeze(np.array(pim)) #2d image
             pif = np.squeeze(np.array(pif)) #2d image
@@ -285,7 +285,8 @@ class VisualizeRunner(Callback):
             pil = np.reshape(pil_flatten, pim.shape)
 
             self.trainer.monitors.put_image('pim_test', pim)
-            self.trainer.monitors.put_image('pil_test', np.expand_dims(get_colors(np.squeeze(pil), plt.cm.PiYG), axis=0))
+            self.trainer.monitors.put_image('pil_test', pil)
+            # self.trainer.monitors.put_image('pil_test', np.expand_dims(get_colors(np.squeeze(pil), plt.cm.PiYG), axis=0))
             # self.trainer.monitors.put_image('pil_test', np.expand_dims(np.expand_dims(pil, axis=0), axis=-1))
             viz = np.squeeze(np.array(viz))
             self.trainer.monitors.put_image('viz_test', viz)
@@ -437,7 +438,7 @@ def sample(dataDir, model_path, prefix='.'):
 
          # Having mask and high dimensional space, so what's next?
         
-        feature_dim=4
+        feature_dim=32
         # First squeeze everything
         pim = np.squeeze(np.array(pred_pim)) #2d image
         pif = np.squeeze(np.array(pred_pif)) #2d image
