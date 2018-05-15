@@ -129,22 +129,17 @@ class Model(ModelDesc):
         G = tf.get_default_graph()
         pi, pm, pl = image, membr, label
 
-        feature_dim=32
+        feature_dim=4
         # Construct the graph
         with G.gradient_override_map({"Round": "Identity", "ArgMax": "Identity"}):
             with tf.variable_scope('gen'):
                 with tf.device('/device:GPU:0'):
-                    # with tf.variable_scope('image2embeds'):
-                    #     pid = self.generator(tf_2tanh(pi), last_dim=feature_dim+1, nl=tf.nn.tanh, nb_filters=32)
+                    with tf.variable_scope('image2embeds'):
+                        # pif = self.generator(tf.concat([pim, tf_2tanh(pi)], axis=-1), last_dim=feature_dim, nl=INLReLU, nb_filters=32)
+                        pif, _ = self.generator(tf_2tanh(pi), last_dim=feature_dim, nl=INLReLU, nb_filters=32)
                     with tf.variable_scope('image2membrs'):
-                        pim, pif = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
-                    # with tf.variable_scope('image2embeds'):
-                    #     pif = self.generator(pim, last_dim=feature_dim, nl=INLReLU, nb_filters=32)
-                        # pif = tf.nn.dropout(pif,     keep_prob=0.5)
-                        # pif = spatial_dropout(pif, 0.5, None, 'drop')
-                        # avg, var = tf.nn.moments(pif, axes=[0,1,2,3], keep_dims=True)
-                        # pif -= avg
-                        # pif /= (var+1e-6)
+                        pim, _ = self.generator(pif, last_dim=1, nl=tf.nn.tanh, nb_filters=32)
+
         # pid = tf_2imag(pid, maxVal=1.0)
         pif = tf.identity(pif, name='pif')
         pim = tf.identity(pim, name='pim')
@@ -169,20 +164,12 @@ class Model(ModelDesc):
             add_moving_summary(mae_im)
 
         with tf.name_scope('loss_discrim'):
-            delta_v     = 0.5 #1.0 #args.dvar
-            delta_d     = 1.5 #3.0 #args.ddist
-            param_var   = 1.0 #args.var
-            param_dist  = 1.0 #args.dist
-            param_reg   = 0.001 #args.reg
-            discrim_loss, _, _, _ = discriminative_loss_single(pif, 
+            discrim_loss = supervised_clustering_loss(pif, 
                                                      pl, 
                                                      feature_dim,            # Feature dim
                                                      (args.DIMZ, args.DIMY, args.DIMX),    # Label shape
-                                                     delta_v, 
-                                                     delta_d, 
-                                                     param_var, 
-                                                     param_dist, 
-                                                     param_reg)
+                                                        )
+
 
             losses.append(1e-1*discrim_loss)
             add_moving_summary(discrim_loss)
@@ -193,7 +180,7 @@ class Model(ModelDesc):
         # Segmentation
         pz = tf.zeros_like(pi)
         viz = tf.concat([tf.concat([pi, 15*pl, 255*pm, 255*pim], axis=2),
-                         tf.concat([255*pif[...,0:1], 255*pif[...,1:2], pif[...,2:3], pif[...,3:4]], axis=2),                         
+                         tf.concat([255*pif[...,0:1], 255*pif[...,1:2], 255*pif[...,2:3], 255*pif[...,3:4]], axis=2),                         
                          ], axis=1)
         viz = tf.cast(tf.clip_by_value(viz, 0, 255), tf.uint8, name='viz')
         tf.summary.image('labelized', viz, max_outputs=50)
@@ -267,7 +254,7 @@ class VisualizeRunner(Callback):
                 return y_pred
 
             # Having mask and high dimensional space, so what's next?
-            feature_dim=16
+            feature_dim=4
             # First squeeze everything
             pim = np.squeeze(np.array(pim)) #2d image
             pif = np.squeeze(np.array(pif)) #2d image
@@ -298,7 +285,8 @@ class VisualizeRunner(Callback):
             pil = np.reshape(pil_flatten, pim.shape)
 
             self.trainer.monitors.put_image('pim_test', pim)
-            self.trainer.monitors.put_image('pil_test', np.expand_dims(get_colors(np.squeeze(pil), plt.cm.PiYG)), axis=0)
+            self.trainer.monitors.put_image('pil_test', np.expand_dims(get_colors(np.squeeze(pil), plt.cm.PiYG), axis=0))
+            self.trainer.monitors.put_image('pil_test', np.expand_dims(np.expand_dims(pil, axis=0), axis=-1))
             viz = np.squeeze(np.array(viz))
             self.trainer.monitors.put_image('viz_test', viz)
 ###############################################################################
@@ -449,7 +437,7 @@ def sample(dataDir, model_path, prefix='.'):
 
          # Having mask and high dimensional space, so what's next?
         
-        feature_dim=16
+        feature_dim=4
         # First squeeze everything
         pim = np.squeeze(np.array(pred_pim)) #2d image
         pif = np.squeeze(np.array(pred_pif)) #2d image
@@ -488,8 +476,8 @@ def sample(dataDir, model_path, prefix='.'):
 
         label = np.squeeze(label)
         pil = np.squeeze(pil)
-        skimage.io.imsave('result_discrim/groundtruth/{}.png'.format(k+1), get_colors(label, plt.cm.PiYG)) #plt.cm.PiYG))
-        skimage.io.imsave('result_discrim/predict/{}.png'.format(k+1), get_colors(pil, plt.cm.PiYG)) #plt.cm.PiYG))
+        skimage.io.imsave('result_spectral/groundtruth/{}.png'.format(k+1), get_colors(label, plt.cm.PiYG)) #plt.cm.PiYG))
+        skimage.io.imsave('result_spectral/predict/{}.png'.format(k+1), get_colors(pil, plt.cm.PiYG)) #plt.cm.PiYG))
     
 
 

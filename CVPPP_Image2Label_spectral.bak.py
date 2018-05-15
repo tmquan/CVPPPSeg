@@ -116,7 +116,7 @@ class Model(ModelDesc):
     @auto_reuse_variable_scope
     def generator(self, image, last_dim=1, nl=INLReLU, nb_filters=32):
         assert image is not None
-        return  arch_fusionnet_2d(image, last_dim=last_dim, nl=nl, nb_filters=nb_filters)
+        return arch_fusionnet_2d(image, last_dim=last_dim, nl=nl, nb_filters=nb_filters)
 
     def inputs(self):
         return [
@@ -139,7 +139,6 @@ class Model(ModelDesc):
                         pif, _ = self.generator(tf_2tanh(pi), last_dim=feature_dim, nl=INLReLU, nb_filters=32)
                     with tf.variable_scope('image2membrs'):
                         pim, _ = self.generator(pif, last_dim=1, nl=tf.nn.tanh, nb_filters=32)
-
         # pid = tf_2imag(pid, maxVal=1.0)
         pif = tf.identity(pif, name='pif')
         pim = tf.identity(pim, name='pim')
@@ -164,20 +163,12 @@ class Model(ModelDesc):
             add_moving_summary(mae_im)
 
         with tf.name_scope('loss_discrim'):
-            delta_v     = 1.0 #0.5 #1.0 #args.dvar
-            delta_d     = 3.0 #1.5 #3.0 #args.ddist
-            param_var   = 1.0 #args.var
-            param_dist  = 1.0 #args.dist
-            param_reg   = 0.001 #args.reg
-            discrim_loss, _, _, _ = discriminative_loss_single(pif, 
+
+            discrim_loss = supervised_clustering_loss(pif, 
                                                      pl, 
                                                      feature_dim,            # Feature dim
                                                      (args.DIMZ, args.DIMY, args.DIMX),    # Label shape
-                                                     delta_v, 
-                                                     delta_d, 
-                                                     param_var, 
-                                                     param_dist, 
-                                                     param_reg)
+                                                        )
 
             losses.append(1e-1*discrim_loss)
             add_moving_summary(discrim_loss)
@@ -188,7 +179,7 @@ class Model(ModelDesc):
         # Segmentation
         pz = tf.zeros_like(pi)
         viz = tf.concat([tf.concat([pi, 15*pl, 255*pm, 255*pim], axis=2),
-                         tf.concat([255*pif[...,0:1], 255*pif[...,1:2], 255*pif[...,2:3], 255*pif[...,3:4]], axis=2),                         
+                         tf.concat([255*pif[...,0:1], 255*pif[...,1:2], pif[...,2:3], pif[...,3:4]], axis=2),                         
                          ], axis=1)
         viz = tf.cast(tf.clip_by_value(viz, 0, 255), tf.uint8, name='viz')
         tf.summary.image('labelized', viz, max_outputs=50)
@@ -293,8 +284,7 @@ class VisualizeRunner(Callback):
             pil = np.reshape(pil_flatten, pim.shape)
 
             self.trainer.monitors.put_image('pim_test', pim)
-            self.trainer.monitors.put_image('pil_test', np.expand_dims(get_colors(np.squeeze(pil), plt.cm.PiYG), axis=0))
-            self.trainer.monitors.put_image('pil_test', np.expand_dims(np.expand_dims(pil, axis=0), axis=-1))
+            self.trainer.monitors.put_image('pil_test', np.expand_dims(get_colors(np.squeeze(pil), plt.cm.PiYG)), axis=0)
             viz = np.squeeze(np.array(viz))
             self.trainer.monitors.put_image('viz_test', viz)
 ###############################################################################
@@ -321,7 +311,6 @@ def get_data(dataDir, isTrain=False, isValid=False, isTest=False, shape=[16, 320
                                pruneLabel=True)
     dset.reset_state()
     return dset
-
 ###############################################################################
 def sample(dataDir, model_path, prefix='.'):
     print("Starting...")
@@ -331,7 +320,6 @@ def sample(dataDir, model_path, prefix='.'):
     
     imageFiles = natsorted(imageFiles)
     labelFiles = natsorted(labelFiles)
-
     def AugmentPair(src_image, src_label, pipeline, seed=None, verbose=False):
         np.random.seed(seed) if seed else np.random.seed(2015)
         # print(src_image.shape, src_label.shape, aug_image.shape, aug_label.shape) if verbose else ''
@@ -445,7 +433,7 @@ def sample(dataDir, model_path, prefix='.'):
 
          # Having mask and high dimensional space, so what's next?
         
-        feature_dim=4
+        feature_dim=16
         # First squeeze everything
         pim = np.squeeze(np.array(pred_pim)) #2d image
         pif = np.squeeze(np.array(pred_pif)) #2d image
@@ -477,6 +465,7 @@ def sample(dataDir, model_path, prefix='.'):
         pil_flatten[idx_1d] = pil_masked_flatten
         pil = np.reshape(pil_flatten, pim.shape)
 
+        
 
         sbd = calc_sbd(label, pil)
         print 'Sbd ', sbd
@@ -484,8 +473,8 @@ def sample(dataDir, model_path, prefix='.'):
 
         label = np.squeeze(label)
         pil = np.squeeze(pil)
-        skimage.io.imsave('result_discrim/groundtruth/{}.png'.format(k+1), get_colors(label, plt.cm.PiYG)) #plt.cm.PiYG))
-        skimage.io.imsave('result_discrim/predict/{}.png'.format(k+1), get_colors(pil, plt.cm.PiYG)) #plt.cm.PiYG))
+        skimage.io.imsave('result_spectral/groundtruth/{}.png'.format(k+1), get_colors(label, plt.cm.PiYG)) #plt.cm.PiYG))
+        skimage.io.imsave('result_spectral/predict/{}.png'.format(k+1), get_colors(pil, plt.cm.PiYG)) #plt.cm.PiYG))
     
 
 

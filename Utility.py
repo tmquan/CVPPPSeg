@@ -194,9 +194,27 @@ def residual_enc(x, chan, first=False, kernel_shape=3):
 @layer_register(log_shape=True)
 def residual_dec(x, chan, first=False, kernel_shape=3):
     with argscope([Conv2D, Deconv2D], nl=INLReLU, stride=1, kernel_shape=kernel_shape):
-        x = Deconv2D('deconv_i', x, chan, stride=1) 
+        # x = Deconv2D('deconv_i', x, chan, stride=1) 
+        # x = residual('res2_', x, chan, first=True)
+        # x = Deconv2D('deconv_o', x, chan, stride=2) 
+        # x = tf.pad(x, name='pad_i', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
+        # x = Conv2D('conv_i', x, chan, stride=1) 
+        
+        # x = Deconv2D('deconv_i', x, chan, stride=1) 
+        # x = residual('res2_', x, chan, first=True)
+        # x = Deconv2D('deconv_o', x, chan, stride=1)
+        # x = BilinearUpSample('upsample', x, 2)
+        
+        x = tf.pad(x, name='pad_i', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
+        x = Conv2D('conv_i', x, chan, stride=1) 
         x = residual('res2_', x, chan, first=True)
-        x = Deconv2D('deconv_o', x, chan, stride=2) 
+        x = tf.pad(x, name='pad_o', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
+        x = Conv2D('conv_o', x, chan, stride=1) 
+        x = BilinearUpSample('upsample', x, 2)
+        x = spatial_dropout(x, 0.5, None, 'dropout')
+        # x = tf.transpose(x, [3, 1, 2, 0])
+        # x = tf.random_shuffle(x)
+        # x = tf.transpose(x, [3, 1, 2, 0])
 
         return x
 
@@ -204,24 +222,26 @@ def residual_dec(x, chan, first=False, kernel_shape=3):
 @auto_reuse_variable_scope
 def arch_fusionnet_2d(img, last_dim=1, nl=INLReLU, nb_filters=32):
     assert img is not None
-    with argscope([Conv2D], nl=INLReLU, kernel_shape=3, stride=2, padding='VALID'):
-        with argscope([Deconv2D], nl=INLReLU, kernel_shape=3, stride=2, padding='SAME'):
+    with argscope([Conv2D], nl=INLReLU, kernel_shape=3, stride=2, padding='VALID', kernel_initializer=tf.truncated_normal_initializer(stddev=0.02)):
+        with argscope([Deconv2D], nl=INLReLU, kernel_shape=3, stride=2, padding='SAME', kernel_initializer=tf.truncated_normal_initializer(stddev=0.02)):
             e0 = residual_enc('e0', img, nb_filters*1)
-            e0 = Dropout('drop0', e0, 0.5)
+            # e0 = Dropout('drop0', e0, 0.5)
             e1 = residual_enc('e1',  e0, nb_filters*2)
             e2 = residual_enc('e2',  e1, nb_filters*4)
 
             e3 = residual_enc('e3',  e2, nb_filters*8)
-            e3 = Dropout('dr', e3, 0.5)
+            # e3 = Dropout('dr', e3, 0.5)
 
             d3 = residual_dec('d3',    e3, nb_filters*4)
             d2 = residual_dec('d2', d3+e2, nb_filters*2)
             d1 = residual_dec('d1', d2+e1, nb_filters*1)
-            d1 = Dropout('drop1', d1, 0.5)
+            # d1 = Dropout('drop1', d1, 0.5)
             d0 = residual_dec('d0', d1+e0, nb_filters*1) 
+            # d0 = spatial_dropout(d0, 0.5, None, 'dropoutlast')
 
             dp = tf.pad( d0, name='pad_o', mode='REFLECT', paddings=[[0,0], [3//2,3//2], [3//2,3//2], [0,0]])
             dd = Conv2D('convlast', dp, last_dim, kernel_shape=3, stride=1, padding='VALID', nl=nl, use_bias=True) 
+
             return dd, d0
 
 
