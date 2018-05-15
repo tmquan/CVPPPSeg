@@ -194,23 +194,24 @@ def residual_enc(x, chan, first=False, kernel_shape=3):
 @layer_register(log_shape=True)
 def residual_dec(x, chan, first=False, kernel_shape=3):
     with argscope([Conv2D, Deconv2D], nl=INLReLU, stride=1, kernel_shape=kernel_shape):
+        x = Dropout('drop', x, 0.5)
         # x = Deconv2D('deconv_i', x, chan, stride=1) 
         # x = residual('res2_', x, chan, first=True)
         # x = Deconv2D('deconv_o', x, chan, stride=2) 
         # x = tf.pad(x, name='pad_i', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
         # x = Conv2D('conv_i', x, chan, stride=1) 
-        x = Dropout('drop', x, 0.5)
-        x = Deconv2D('deconv_i', x, chan, stride=1) 
-        x = residual('res2_', x, chan, first=True)
-        x = Deconv2D('deconv_o', x, chan, stride=1)
-        x = BilinearUpSample('upsample', x, 2)
-        
-        # x = tf.pad(x, name='pad_i', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
-        # x = Conv2D('conv_i', x, chan, stride=1) 
+        # x = Dropout('drop', x, 0.5)
+        # x = Deconv2D('deconv_i', x, chan, stride=1) 
         # x = residual('res2_', x, chan, first=True)
-        # x = tf.pad(x, name='pad_o', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
-        # x = Conv2D('conv_o', x, chan, stride=1) 
+        # x = Deconv2D('deconv_o', x, chan, stride=1)
         # x = BilinearUpSample('upsample', x, 2)
+        
+        x = tf.pad(x, name='pad_i', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
+        x = Conv2D('conv_i', x, chan, stride=1) 
+        x = residual('res2_', x, chan, first=True)
+        x = tf.pad(x, name='pad_o', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
+        x = Conv2D('conv_o', x, chan, stride=1) 
+        x = BilinearUpSample('upsample', x, 2)
         # x = spatial_dropout(x, 0.5, None, 'dropout')
       
 

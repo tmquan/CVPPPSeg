@@ -134,11 +134,10 @@ class Model(ModelDesc):
         with G.gradient_override_map({"Round": "Identity", "ArgMax": "Identity"}):
             with tf.variable_scope('gen'):
                 with tf.device('/device:GPU:0'):
-                    # with tf.variable_scope('image2embeds'):
-                        # pif = self.generator(tf.concat([pim, tf_2tanh(pi)], axis=-1), last_dim=feature_dim, nl=INLReLU, nb_filters=32)
-                        # pif, _ = self.generator(tf_2tanh(pi), last_dim=feature_dim, nl=INLReLU, nb_filters=32)
                     with tf.variable_scope('image2membrs'):
-                        pim, pif = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
+                        pim, _ = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
+                    with tf.variable_scope('image2embeds'):
+                        pif, _ = self.generator(tf.concat([pim, tf_2tanh(pi)], axis=-1), last_dim=feature_dim, nl=INLReLU, nb_filters=32)
 
         # pid = tf_2imag(pid, maxVal=1.0)
         pif = tf.identity(pif, name='pif')
@@ -207,14 +206,14 @@ class VisualizeRunner(Callback):
 
     def _setup_graph(self):
         self.pred = self.trainer.get_predictor(
-            ['image', 'membr', 'label'], ['viz', 'pim', 'pif'])
+            ['image', 'membr', 'label'], ['viz', 'pim', 'pif', 'label'])
 
     def _before_train(self):
         pass
 
     def _trigger(self):
         for lst in self.dset.get_data():
-            viz, pim, pif = self.pred(lst)
+            viz, pim, pif, pl = self.pred(lst)
 
 
 
@@ -283,7 +282,7 @@ class VisualizeRunner(Callback):
 
             bandwidth = 1.0 #
             # bandwidth = cluster.estimate_bandwidth(pif_masked_flatten, quantile=0.3)
-            algorithm = cluster.MeanShift(bandwidth= bandwidth, bin_seeding=True, n_jobs=4)
+            algorithm = cluster.SpectralClustering(n_clusters=pl.max(), eigen_solver='arpack', affinity="nearest_neighbors")
             pil_masked_flatten = np_func(pif_masked_flatten, algorithm, 
                                          feature_dim=feature_dim)
 
