@@ -200,21 +200,19 @@ def residual_dec(x, chan, first=False, kernel_shape=3):
         # x = tf.pad(x, name='pad_i', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
         # x = Conv2D('conv_i', x, chan, stride=1) 
         
-        # x = Deconv2D('deconv_i', x, chan, stride=1) 
-        # x = residual('res2_', x, chan, first=True)
-        # x = Deconv2D('deconv_o', x, chan, stride=1)
-        # x = BilinearUpSample('upsample', x, 2)
-        
-        x = tf.pad(x, name='pad_i', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
-        x = Conv2D('conv_i', x, chan, stride=1) 
+        x = Deconv2D('deconv_i', x, chan, stride=1) 
         x = residual('res2_', x, chan, first=True)
-        x = tf.pad(x, name='pad_o', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
-        x = Conv2D('conv_o', x, chan, stride=1) 
+        x = Deconv2D('deconv_o', x, chan, stride=1)
         x = BilinearUpSample('upsample', x, 2)
-        x = spatial_dropout(x, 0.5, None, 'dropout')
-        # x = tf.transpose(x, [3, 1, 2, 0])
-        # x = tf.random_shuffle(x)
-        # x = tf.transpose(x, [3, 1, 2, 0])
+        
+        # x = tf.pad(x, name='pad_i', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
+        # x = Conv2D('conv_i', x, chan, stride=1) 
+        # x = residual('res2_', x, chan, first=True)
+        # x = tf.pad(x, name='pad_o', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
+        # x = Conv2D('conv_o', x, chan, stride=1) 
+        # x = BilinearUpSample('upsample', x, 2)
+        # x = spatial_dropout(x, 0.5, None, 'dropout')
+      
 
         return x
 
