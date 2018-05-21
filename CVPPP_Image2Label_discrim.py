@@ -134,19 +134,21 @@ class Model(ModelDesc):
         with G.gradient_override_map({"Round": "Identity", "ArgMax": "Identity"}):
             with tf.variable_scope('gen'):
                 with tf.device('/device:GPU:0'):
-                    with tf.variable_scope('image2embeds'):
-                        pim, pif = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
+                    with tf.variable_scope('image2affnt'):
+                        pim, _ = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
+                    with tf.variable_scope('image2feats'):
+                        pif, _ = self.generator(tf_2tanh(pi), last_dim=32, nl=INLReLU, nb_filters=32)
 
-        # pid = tf_2imag(pid, maxVal=1.0)
-        pif = tf.identity(pif, name='pif')
-        pim = tf.identity(pim, name='pim')
-        #                 pif, pim = self.generator(tf_2tanh(pi), last_dim=64, nl=tf.nn.tanh, nb_filters=32)
 
         pim = tf_2imag(pim, maxVal=1.0)
         pif = tf_2imag(pif, maxVal=1.0)
-        # # pim = tf.identity(pid[...,0:1], name='pim')
-        # # pif = tf.identity(pid[...,1::], name='pif')
-        # Define loss hre
+
+
+        pif = tf.identity(pif, name='pif')
+        pim = tf.identity(pim, name='pim')
+
+
+        # Define loss here
         losses = [] 
 
         with tf.name_scope('loss_aff'):
@@ -161,8 +163,13 @@ class Model(ModelDesc):
             add_moving_summary(mae_im)
 
         with tf.name_scope('loss_discrim'):
-            delta_v     = 1.0 #0.5 #1.0 #args.dvar
-            delta_d     = 3.0 #1.5 #3.0 #args.ddist
+            # dis_if = supervised_clustering_loss(pif, 
+            #                                      pl, 
+            #                                      feature_dim,            # Feature dim
+            #                                      (args.DIMZ, args.DIMY, args.DIMX),    # Label shape
+            #                                         )
+            delta_v     = 0.5 #0.5 #1.0 #args.dvar
+            delta_d     = 1.5 #1.5 #3.0 #args.ddist
             param_var   = 1.0 #args.var
             param_dist  = 1.0 #args.dist
             param_reg   = 0.001 #args.reg
@@ -176,21 +183,10 @@ class Model(ModelDesc):
                                                      param_dist, 
                                                      param_reg)
 
-            # dis_if = supervised_clustering_loss(pif, 
-            #                                      pl, 
-            #                                      feature_dim,            # Feature dim
-            #                                      (args.DIMZ, args.DIMY, args.DIMX),    # Label shape
-            #                                         )
-
 
             losses.append(1e-1*dis_if)
             add_moving_summary(dis_if)
 
-            # dis_im = supervised_clustering_loss(pif, 
-            #                                      pm, 
-            #                                      feature_dim,            # Feature dim
-            #                                      (args.DIMZ, args.DIMY, args.DIMX),    # Label shape
-            #                                         )
             dis_im, _, _, _ = discriminative_loss_single(pif, 
                                                      pm, 
                                                      feature_dim,            # Feature dim
@@ -316,7 +312,7 @@ class VisualizeRunner(Callback):
             pil_flatten[idx_1d] = pil_masked_flatten
             pil = np.reshape(pil_flatten, pim.shape)
 
-            self.trainer.monitors.put_image('pim_test', pim)
+            # self.trainer.monitors.put_image('pim_test', pim)
             self.trainer.monitors.put_image('pil_test', pil)
             # self.trainer.monitors.put_image('pil_test', np.expand_dims(get_colors(np.squeeze(pil), plt.cm.PiYG), axis=0))
             # self.trainer.monitors.put_image('pil_test', np.expand_dims(np.expand_dims(pil, axis=0), axis=-1))
