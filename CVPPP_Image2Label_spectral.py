@@ -134,10 +134,8 @@ class Model(ModelDesc):
         with G.gradient_override_map({"Round": "Identity", "ArgMax": "Identity"}):
             with tf.variable_scope('gen'):
                 with tf.device('/device:GPU:0'):
-                    with tf.variable_scope('image2membrs'):
-                        pim, _ = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
                     with tf.variable_scope('image2embeds'):
-                        pif, _ = self.generator(tf.concat([pim, tf_2tanh(pi)], axis=-1), last_dim=feature_dim, nl=INLReLU, nb_filters=32)
+                        pim, pif = self.generator(tf_2tanh(pi), last_dim=1, nl=tf.nn.tanh, nb_filters=32)
 
         # pid = tf_2imag(pid, maxVal=1.0)
         pif = tf.identity(pif, name='pif')
@@ -163,23 +161,26 @@ class Model(ModelDesc):
             add_moving_summary(mae_im)
 
         with tf.name_scope('loss_discrim'):
-            delta_v     = 1.0 #0.5 #1.0 #args.dvar
-            delta_d     = 3.0 #1.5 #3.0 #args.ddist
-            param_var   = 1.0 #args.var
-            param_dist  = 1.0 #args.dist
-            param_reg   = 0.001 #args.reg
-            discrim_loss, _, _, _ = discriminative_loss_single(pif, 
-                                                     pl, 
-                                                     feature_dim,            # Feature dim
-                                                     (args.DIMZ, args.DIMY, args.DIMX),    # Label shape
-                                                     delta_v, 
-                                                     delta_d, 
-                                                     param_var, 
-                                                     param_dist, 
-                                                     param_reg)
+            dis_if = supervised_clustering_loss(pif, 
+                                                 pl, 
+                                                 feature_dim,            # Feature dim
+                                                 (args.DIMZ, args.DIMY, args.DIMX),    # Label shape
+                                                    )
 
-            losses.append(1e-1*discrim_loss)
-            add_moving_summary(discrim_loss)
+
+            losses.append(1e-1*dis_if)
+            add_moving_summary(dis_if)
+
+            dis_im = supervised_clustering_loss(pif, 
+                                                 pm, 
+                                                 feature_dim,            # Feature dim
+                                                 (args.DIMZ, args.DIMY, args.DIMX),    # Label shape
+                                                    )
+
+
+            losses.append(1e-1*dis_im)
+            add_moving_summary(dis_im)
+
         # Aggregate final loss
         self.cost = tf.reduce_sum(losses, name='self.cost')
         add_moving_summary(self.cost)
@@ -484,8 +485,8 @@ def sample(dataDir, model_path, prefix='.'):
 
         label = np.squeeze(label)
         pil = np.squeeze(pil)
-        skimage.io.imsave('result_discrim/groundtruth/{}.png'.format(k+1), get_colors(label, plt.cm.PiYG)) #plt.cm.PiYG))
-        skimage.io.imsave('result_discrim/predict/{}.png'.format(k+1), get_colors(pil, plt.cm.PiYG)) #plt.cm.PiYG))
+        skimage.io.imsave('result_spectral/groundtruth/{}.png'.format(k+1), get_colors(label, plt.cm.PiYG)) #plt.cm.PiYG))
+        skimage.io.imsave('result_spectral/predict/{}.png'.format(k+1), get_colors(pil, plt.cm.PiYG)) #plt.cm.PiYG))
     
 
 
