@@ -181,41 +181,74 @@ def residual(x, chan, first=False, kernel_shape=3):
 @layer_register(log_shape=True)
 def residual_enc(x, chan, first=False, kernel_shape=3):
     with argscope([Conv2D, Deconv2D], nl=INLReLU, stride=1, kernel_shape=kernel_shape):
-        
+        x = Dropout('drop', x, 0.5)
         x = tf.pad(x, name='pad_i', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
         x = Conv2D('conv_i', x, chan, stride=2) 
         x = residual('res_', x, chan, first=True)
         x = tf.pad(x, name='pad_o', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
         x = Conv2D('conv_o', x, chan, stride=1) 
-        x = Dropout('drop', x, 0.5)
+        
         return x
 
 ###############################################################################
 @layer_register(log_shape=True)
 def residual_dec(x, chan, first=False, kernel_shape=3):
     with argscope([Conv2D, Deconv2D], nl=INLReLU, stride=1, kernel_shape=kernel_shape):
-        x = Dropout('drop', x, 0.5)
+        # x = Dropout('drop', x, 0.5)
         # x = Deconv2D('deconv_i', x, chan, stride=1) 
         # x = residual('res2_', x, chan, first=True)
         # x = Deconv2D('deconv_o', x, chan, stride=2) 
         # x = tf.pad(x, name='pad_i', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
         # x = Conv2D('conv_i', x, chan, stride=1) 
+
         # x = Dropout('drop', x, 0.5)
-        # x = Deconv2D('deconv_i', x, chan, stride=1) 
-        # x = residual('res2_', x, chan, first=True)
-        # x = Deconv2D('deconv_o', x, chan, stride=1)
-        # x = BilinearUpSample('upsample', x, 2)
-        
-        x = tf.pad(x, name='pad_i', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
-        x = Conv2D('conv_i', x, chan, stride=1) 
+        x = Deconv2D('deconv_i', x, chan, stride=1) 
         x = residual('res2_', x, chan, first=True)
-        x = tf.pad(x, name='pad_o', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
-        x = Conv2D('conv_o', x, chan, stride=1) 
+        x = Deconv2D('deconv_o', x, chan, stride=1)
         x = BilinearUpSample('upsample', x, 2)
+        x = Dropout('drop', x, 0.5)
+        # x = Dropout('drop', x, 0.5)
+        # x = tf.pad(x, name='pad_i', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
+        # x = Conv2D('conv_i', x, chan, stride=1) 
+        # x = residual('res2_', x, chan, first=True)
+        # x = tf.pad(x, name='pad_o', mode='REFLECT', paddings=[[0,0], [kernel_shape//2,kernel_shape//2], [kernel_shape//2,kernel_shape//2], [0,0]])
+        # x = Conv2D('conv_o', x, chan, stride=1) 
+        # x = BilinearUpSample('upsample', x, 2)
         # x = spatial_dropout(x, 0.5, None, 'dropout')
       
 
         return x
+def spatial_dropout(x, p, seed, scope, is_training=True):
+    '''
+    Performs a 2D spatial dropout that drops layers instead of individual elements in an input feature map.
+    Note that p stands for the probability of dropping, but tf.nn.relu uses probability of keeping.
+    ------------------
+    Technical Details
+    ------------------
+    The noise shape must be of shape [batch_size, 1, 1, num_channels], with the height and width set to 1, because
+    it will represent either a 1 or 0 for each layer, and these 1 or 0 integers will be broadcasted to the entire
+    dimensions of each layer they interact with such that they can decide whether each layer should be entirely
+    'dropped'/set to zero or have its activations entirely kept.
+    --------------------------
+    INPUTS:
+    - x(Tensor): a 4D Tensor of the input feature map.
+    - p(float): a float representing the probability of dropping a layer
+    - seed(int): an integer for random seeding the random_uniform distribution that runs under tf.nn.relu
+    - scope(str): the string name for naming the spatial_dropout
+    - is_training(bool): to turn on dropout only when training. Optional.
+    OUTPUTS:
+    - output(Tensor): a 4D Tensor that is in exactly the same size as the input x,
+                      with certain layers having their elements all set to 0 (i.e. dropped).
+    '''
+    if is_training:
+        keep_prob = 1.0 - p
+        input_shape = x.get_shape().as_list()
+        noise_shape = tf.constant(value=[input_shape[0], 1, 1, input_shape[3]])
+        output = tf.nn.dropout(x, keep_prob, noise_shape, seed=seed, name=scope)
+
+        return output
+
+    return x
 
 ###############################################################################
 @auto_reuse_variable_scope
@@ -236,7 +269,6 @@ def arch_fusionnet_2d(img, last_dim=1, nl=INLReLU, nb_filters=32):
             d1 = residual_dec('d1', d2+e1, nb_filters*1)
             # d1 = Dropout('drop1', d1, 0.5)
             d0 = residual_dec('d0', d1+e0, nb_filters*1) 
-            # d0 = spatial_dropout(d0, 0.5, None, 'dropoutlast')
 
             dp = tf.pad( d0, name='pad_o', mode='REFLECT', paddings=[[0,0], [3//2,3//2], [3//2,3//2], [0,0]])
             dd = Conv2D('convlast', dp, last_dim, kernel_shape=3, stride=1, padding='VALID', nl=nl, use_bias=True) 
@@ -498,6 +530,8 @@ def discriminative_loss_single(prediction, correct_label, feature_dim, label_sha
 
     ### Calculate l_var
     distance = tf_norm(tf.subtract(mu_expand, reshaped_pred), axis=1)
+    # distance = tf_norm(tf.abs(mu_expand - reshaped_pred), axis=1)
+    distance = tf.abs(distance)
     distance = tf.subtract(distance, delta_v)
     distance = tf.clip_by_value(distance, 0., distance)
     distance = tf.square(distance)
